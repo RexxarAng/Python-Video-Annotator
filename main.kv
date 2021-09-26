@@ -1,0 +1,83 @@
+#:import rgba kivy.utils.get_color_from_hex
+<ContentNavigationDrawer>
+    ScrollView:
+        MDList:
+            id: md_list
+            OneLineAvatarListItem:
+                text: "Open Folder"
+                on_press:
+                    root.nav_drawer.set_state("close")
+                    root.screen_manager.current = "Directory"
+                IconLeftWidget:
+                    icon: "file"
+            OneLineAvatarListItem:
+                text: "Open Video"
+                on_press:
+                    root.nav_drawer.set_state("close")
+                    root.screen_manager.current = "Video"
+                    app.openVideo()
+                IconLeftWidget:
+                    icon: "video"
+            OneLineAvatarListItem:
+                text: "Verify"
+                on_press:
+                    root.nav_drawer.set_state("close")
+                    root.screen_manager.current = "Verify"
+                IconLeftWidget:
+                    icon: "video"
+
+MDBoxLayout:
+    orientation: "vertical"
+    md_bg_color: rgba("#202225")
+    MDToolbar:
+        id: toolbar
+        title: "Video Annotator"
+        md_bg_color: rgba("#34373C")
+        pos_hint: {"top": 1}
+        elevation: 5
+        left_action_items: [["menu", lambda x: nav_drawer.set_state("open")]]
+
+    MDNavigationLayout:
+        height: root.height
+        ScreenManager:
+            id: screen_manager
+            Screen:
+                id: video
+                name: "Video"
+                MDBoxLayout:
+                    orientation: "vertical"
+
+                    MDBoxLayout:
+                        md_bg_color: rgba('#adadad')
+                        orientation: "horizontal"
+                        size_hint: 1, .1
+                        MDIconButton:
+                            font_size: 48
+                            icon: "pencil"
+
+                    MDLabel:
+                        text: "Video Page"
+                        font_size: 32
+                        halign: "center"
+       
+            Screen:
+                name: "Directory"
+                MDLabel:
+                    text: "Directory Page"
+                    font_size: 32
+                    halign: "center"
+                    
+
+            Screen:
+                id: verify_page
+                name: "Verify"
+                MDLabel:
+                    text: "Verify Page"
+                    font_size: 32
+                    halign: "center"
+
+        MDNavigationDrawer:
+            id: nav_drawer
+            ContentNavigationDrawer:
+                screen_manager: screen_manager
+                nav_drawer: nav_drawer
