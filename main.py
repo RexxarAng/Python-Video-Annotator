@@ -22,9 +22,11 @@ import numpy as np
 class NavigationLayout():
     pass
 
+
 class ContentNavigationDrawer(BoxLayout):
     screen_manager = ObjectProperty()
     nav_drawer = ObjectProperty()
+
 
 class VideoAnnotatorApp(MDApp):
     def __init__(self, **kwargs):
@@ -61,74 +63,74 @@ class VideoAnnotatorApp(MDApp):
         self.exit_manager()
 
     def events(self, instance, keyboard, keycode, text, modifiers):
-        '''Called when buttons are pressed on the mobile device.'''
+        # Called when buttons are pressed on the mobile device
 
         if keyboard in (1001, 27):
             if self.manager_open:
                 self.file_manager.back()
         return True
 
-    def openVideo(self):
-        vidcap = cv2.VideoCapture('video.mp4')
-        length = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))-1
-        currenttrackbar = 0
-        def onChange(trackbarValue):
-            global currenttrackbar 
-            currenttrackbar = trackbarValue
-            print(currenttrackbar)
-            vidcap.set(cv2.CAP_PROP_POS_FRAMES,trackbarValue)
-            err,img = vidcap.read()
-            cv2.imshow("Label Video", img)
-            pass
-        
+    def open_video(self):
+        vid_cap = cv2.VideoCapture('video.mp4')
+        length = int(vid_cap.get(cv2.CAP_PROP_FRAME_COUNT)) - 1
+        current_trackbar = 0
+
+        def on_change(trackbarValue):
+            global current_trackbar
+            current_trackbar = trackbarValue
+            print(current_trackbar)
+            vid_cap.set(cv2.CAP_PROP_POS_FRAMES, trackbarValue)
+            err, image = vid_cap.read()
+            cv2.imshow("Label Video", image)
+
         # Update trackbar
-        def onLeftArrow(k):
-            global currenttrackbar
+        def on_left_arrow(k):
+            global current_trackbar
             if k == 2424832:
-                if currenttrackbar > 0:
-                    currenttrackbar -= 1
-                    cv2.setTrackbarPos('start', 'Label Video', currenttrackbar)
-        
-        def onRightArrow(k):
-            global currenttrackbar
+                if current_trackbar > 0:
+                    current_trackbar -= 1
+                    cv2.setTrackbarPos('start', 'Label Video', current_trackbar)
+
+        def on_right_arrow(k):
+            global current_trackbar
             if k == 2555904:
-                if currenttrackbar < length:
-                    currenttrackbar += 1
-                    cv2.setTrackbarPos('start', 'Label Video', currenttrackbar)
+                if current_trackbar < length:
+                    current_trackbar += 1
+                    cv2.setTrackbarPos('start', 'Label Video', current_trackbar)
 
         cv2.namedWindow('Label Video')
-        cv2.createTrackbar( 'start', 'Label Video', 0, length, onChange )
-        cv2.createTrackbar( 'end'  , 'Label Video', length, length, onChange )
+        cv2.createTrackbar('start', 'Label Video', 0, length, on_change)
+        cv2.createTrackbar('end', 'Label Video', length, length, on_change)
 
+        on_change(0)
 
-        onChange(0)
-
-        start = cv2.getTrackbarPos('start','Label Video')
-        end   = cv2.getTrackbarPos('end','Label Video')
+        start = cv2.getTrackbarPos('start', 'Label Video')
+        end = cv2.getTrackbarPos('end', 'Label Video')
 
         if start >= end:
             raise Exception("start must be less than end")
-        vidcap.set(cv2.CAP_PROP_POS_FRAMES,start)
+        vid_cap.set(cv2.CAP_PROP_POS_FRAMES, start)
         image_annotations = {}
-        while(vidcap.isOpened()):
-            hasFrames, img = vidcap.read()
-            if hasFrames:
-                if currenttrackbar in image_annotations:
+        while vid_cap.isOpened():
+            has_frames, img = vid_cap.read()
+            if has_frames:
+                if current_trackbar in image_annotations:
                     print(image_annotations)
                 cv2.imshow("Label Video", img)
-                k = cv2.waitKeyEx(0) 
+                k = cv2.waitKeyEx(0)
                 # Update trackbar for 'left arrow'
-                onLeftArrow(k)
-                # Update trackbar for 'right arrow'        
-                onRightArrow(k)
-                if currenttrackbar == length:
+                on_left_arrow(k)
+                # Update trackbar for 'right arrow'
+                on_right_arrow(k)
+                if current_trackbar == length:
                     k = cv2.waitKey(0)
-                    onLeftArrow(k)
-                    onRightArrow(k)
-                    
+                    on_left_arrow(k)
+                    on_right_arrow(k)
+
                 if k == ord('t'):
                     border_box = cv2.selectROI("Label Video", img, False)
-                    selected_box = img[int(border_box[1]):int(border_box[1]+border_box[3]), int(border_box[0]):int(border_box[0]+border_box[2])]
+                    selected_box = img[int(border_box[1]):int(border_box[1] + border_box[3]),
+                                   int(border_box[0]):int(border_box[0] + border_box[2])]
                     cv2.imshow("ROI", selected_box)
                     if cv2.getTrackbarPos('start', 'Label Video') in image_annotations:
                         image_annotations[cv2.getTrackbarPos('start', 'Label Video')] = border_box
@@ -136,18 +138,16 @@ class VideoAnnotatorApp(MDApp):
                         image_annotations[cv2.getTrackbarPos('start', 'Label Video')] = border_box
                 if k == 81 or k == 113:
                     break
-                
-                if cv2.getWindowProperty('Label Video', cv2.WND_PROP_VISIBLE) <1:
+
+                if cv2.getWindowProperty('Label Video', cv2.WND_PROP_VISIBLE) < 1:
                     break
             else:
                 break
 
-        vidcap.release()
+        vid_cap.release()
         cv2.destroyAllWindows()
         # print(self.root.ids)
         # self.root.ids.image.source = str(vidFrames[0])
-
-
 
 
 if __name__ == "__main__":
