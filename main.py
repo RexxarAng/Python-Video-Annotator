@@ -7,19 +7,19 @@ from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.uix.widget import Widget
 from kivy.uix.boxlayout import BoxLayout
 from kivy.properties import ObjectProperty, StringProperty
+from kivy.core.window import Window
 from kivymd.uix.filemanager import MDFileManager
 from kivy.factory import Factory
 from kivymd.toast import toast
-from kivy.core.window import Window
-from kivy.uix.modalview import ModalView
+from kivymd_extensions.filemanager import FileManager
 import cv2
-import numpy as np
+import os
 
 # class VideoScreen(Screen):
 #     image = ObjectProperty()
         
 
-class NavigationLayout():
+class NavigationLayout:
     pass
 
 
@@ -33,7 +33,12 @@ class VideoAnnotatorApp(MDApp):
         super().__init__(**kwargs)
         Window.bind(on_keyboard=self.events)
         self.manager_open = False
-        self.manager = None
+        self.file_manager = MDFileManager(
+            exit_manager=self.exit_manager,
+            select_path=self.select_path,
+            ext=['.mp4']
+        )
+        self.filepath = ''
 
     def build(self):
         # self.theme_cls.theme_style = "Dark"
@@ -44,26 +49,29 @@ class VideoAnnotatorApp(MDApp):
         return Builder.load_file("main.kv")
 
     def file_manager_open(self):
-        if not self.manager:
-            self.manager = ModalView(size_hint=(1, 1), auto_dismiss=False)
-            self.file_manager = MDFileManager(
-                exit_manager=self.exit_manager, select_path=self.select_path)
-            self.manager.add_widget(self.file_manager)
-            self.file_manager.show('/')  # output manager to the screen
+        self.file_manager.show(os.path.abspath("../"))  # output manager to the screen
         self.manager_open = True
-        self.manager.open()
-
-    def exit_manager(self):
-        self.manager.dismiss()
-        self.manager_open = False
 
     def select_path(self, path):
-        print(path)
-        toast(path)
+        '''It will be called when you click on the file name
+        or the catalog selection button.
+
+        :type path: str;
+        :param path: path to the selected directory or file;
+        '''
+        self.filepath = path
         self.exit_manager()
+        toast(path)
+        self.open_video()
+
+    def exit_manager(self, *args):
+        '''Called when the user reaches the root of the directory tree.'''
+
+        self.manager_open = False
+        self.file_manager.close()
 
     def events(self, instance, keyboard, keycode, text, modifiers):
-        # Called when buttons are pressed on the mobile device
+        '''Called when buttons are pressed on the mobile device.'''
 
         if keyboard in (1001, 27):
             if self.manager_open:
@@ -71,7 +79,7 @@ class VideoAnnotatorApp(MDApp):
         return True
 
     def open_video(self):
-        vid_cap = cv2.VideoCapture('video.mp4')
+        vid_cap = cv2.VideoCapture(self.filepath)
         length = int(vid_cap.get(cv2.CAP_PROP_FRAME_COUNT)) - 1
         current_trackbar = 0
 
