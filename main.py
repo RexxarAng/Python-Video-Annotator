@@ -11,10 +11,10 @@ from kivy.core.window import Window
 from kivymd.uix.filemanager import MDFileManager
 from kivy.factory import Factory
 from kivymd.toast import toast
-from kivymd_extensions.filemanager import FileManager
 import cv2
+import numpy as np
 import os
-
+import PySimpleGUI as sg
 # class VideoScreen(Screen):
 #     image = ObjectProperty()
         
@@ -86,7 +86,6 @@ class VideoAnnotatorApp(MDApp):
         def on_change(trackbarValue):
             global current_trackbar
             current_trackbar = trackbarValue
-            print(current_trackbar)
             vid_cap.set(cv2.CAP_PROP_POS_FRAMES, trackbarValue)
             err, image = vid_cap.read()
             cv2.imshow("Label Video", image)
@@ -97,35 +96,49 @@ class VideoAnnotatorApp(MDApp):
             if k == 2424832:
                 if current_trackbar > 0:
                     current_trackbar -= 1
-                    cv2.setTrackbarPos('start', 'Label Video', current_trackbar)
+                    cv2.setTrackbarPos('Frame', 'Label Video', current_trackbar)
 
         def on_right_arrow(k):
             global current_trackbar
             if k == 2555904:
                 if current_trackbar < length:
                     current_trackbar += 1
-                    cv2.setTrackbarPos('start', 'Label Video', current_trackbar)
+                    cv2.setTrackbarPos('Frame', 'Label Video', current_trackbar)
 
         cv2.namedWindow('Label Video')
-        cv2.createTrackbar('start', 'Label Video', 0, length, on_change)
-        cv2.createTrackbar('end', 'Label Video', length, length, on_change)
-
+        cv2.createTrackbar('Frame', 'Label Video', 0, length, on_change)
         on_change(0)
 
-        start = cv2.getTrackbarPos('start', 'Label Video')
-        end = cv2.getTrackbarPos('end', 'Label Video')
+        start = cv2.getTrackbarPos('Frame', 'Label Video')
 
-        if start >= end:
-            raise Exception("start must be less than end")
         vid_cap.set(cv2.CAP_PROP_POS_FRAMES, start)
         image_annotations = {}
+        tracker = cv2.TrackerKCF_create()
+        is_tracking = False
+        current_label = 'Smoking'
         while vid_cap.isOpened():
             has_frames, img = vid_cap.read()
             if has_frames:
-                if current_trackbar in image_annotations:
-                    print(image_annotations)
+                print(image_annotations)
+                if is_tracking:
+                    has_frames, bbox = tracker.update(img)
+                    if has_frames:
+                        p1 = (int(bbox[0]), int(bbox[1]))
+                        p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
+                        cv2.rectangle(img, p1, p2, (255, 255, 0), 2, 1)
+                        cv2.putText(img, current_label, (int(bbox[0]), int(bbox[1])-10), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
+                                    (0, 255, 255), 2)
+                    # else:
+                    #     # Tracking failure
+                    #     cv2.putText(img, "Tracking failure detected", (100, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
+                    #                 (0, 0, 255), 2)
+                current_trackbar += 1
+                cv2.setTrackbarPos('Frame', 'Label Video', current_trackbar)
                 cv2.imshow("Label Video", img)
-                k = cv2.waitKeyEx(0)
+                k = cv2.waitKeyEx(1)
+                if k == 32:
+                    is_tracking = False
+                    cv2.waitKey(-1)
                 # Update trackbar for 'left arrow'
                 on_left_arrow(k)
                 # Update trackbar for 'right arrow'
@@ -137,13 +150,19 @@ class VideoAnnotatorApp(MDApp):
 
                 if k == ord('t'):
                     border_box = cv2.selectROI("Label Video", img, False)
+                    label = sg.popup_get_text("Enter the label for this object: ", default_text="Smoking")
+                    current_label = label
+                    tracker = cv2.TrackerKCF_create()
+                    tracker.init(img, border_box)
+                    is_tracking = True
                     selected_box = img[int(border_box[1]):int(border_box[1] + border_box[3]),
-                                   int(border_box[0]):int(border_box[0] + border_box[2])]
+                                int(border_box[0]):int(border_box[0] + border_box[2])]
                     cv2.imshow("ROI", selected_box)
-                    if cv2.getTrackbarPos('start', 'Label Video') in image_annotations:
-                        image_annotations[cv2.getTrackbarPos('start', 'Label Video')] = border_box
+                    annotation = [label, border_box]
+                    if cv2.getTrackbarPos('Frame', 'Label Video') in image_annotations:
+                        image_annotations[cv2.getTrackbarPos('Frame', 'Label Video')] = annotation
                     else:
-                        image_annotations[cv2.getTrackbarPos('start', 'Label Video')] = border_box
+                        image_annotations[cv2.getTrackbarPos('Frame', 'Label Video')] = annotation
                 if k == 81 or k == 113:
                     break
 
