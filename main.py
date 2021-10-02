@@ -15,9 +15,11 @@ import cv2
 import numpy as np
 import os
 import PySimpleGUI as sg
+
+
 # class VideoScreen(Screen):
 #     image = ObjectProperty()
-        
+
 
 class NavigationLayout:
     pass
@@ -81,29 +83,90 @@ class VideoAnnotatorApp(MDApp):
     def open_video(self):
         vid_cap = cv2.VideoCapture(self.filepath)
         length = int(vid_cap.get(cv2.CAP_PROP_FRAME_COUNT)) - 1
-        current_trackbar = 0
+        current_frame = 0
+        image_annotations = {}
+        tracker = cv2.TrackerCSRT_create()
+        # trackers = cv2.legacy.MultiTracker_create()
+        is_tracking = False
+        current_label = 'Smoking'
 
         def on_change(trackbarValue):
-            global current_trackbar
-            current_trackbar = trackbarValue
+            nonlocal current_frame, is_tracking
+            current_frame = trackbarValue
             vid_cap.set(cv2.CAP_PROP_POS_FRAMES, trackbarValue)
             err, image = vid_cap.read()
+            image = rescale_frame(image, percent=50)
             cv2.imshow("Label Video", image)
 
         # Update trackbar
-        def on_left_arrow(k):
-            global current_trackbar
-            if k == 2424832:
-                if current_trackbar > 0:
-                    current_trackbar -= 1
-                    cv2.setTrackbarPos('Frame', 'Label Video', current_trackbar)
+        def on_left_arrow():
+            nonlocal current_frame
+            if current_frame > 0:
+                current_frame -= 1
+                cv2.setTrackbarPos('Frame', 'Label Video', current_frame)
 
-        def on_right_arrow(k):
-            global current_trackbar
-            if k == 2555904:
-                if current_trackbar < length:
-                    current_trackbar += 1
-                    cv2.setTrackbarPos('Frame', 'Label Video', current_trackbar)
+        def on_right_arrow():
+            nonlocal current_frame
+            if current_frame < length:
+                current_frame += 1
+                cv2.setTrackbarPos('Frame', 'Label Video', current_frame)
+
+        def rescale_frame(frame, percent=75):
+            width = int(frame.shape[1] * percent / 100)
+            height = int(frame.shape[0] * percent / 100)
+            dim = (width, height)
+            return cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
+
+        def start_annotate():
+            nonlocal tracker, current_label, is_tracking
+            border_box = cv2.selectROI("Label Video", img, False)
+            label = sg.popup_get_text("Enter the label for this object: ", default_text="Smoking")
+            current_label = label
+            if label:
+                tracker = cv2.TrackerCSRT_create()
+                tracker.init(img, border_box)
+                is_tracking = True
+                selected_box = img[int(border_box[1]):int(border_box[1] + border_box[3]),
+                               int(border_box[0]):int(border_box[0] + border_box[2])]
+                cv2.imshow("ROI", selected_box)
+                current_annotation = [label, border_box]
+                if cv2.getTrackbarPos('Frame', 'Label Video') in image_annotations:
+                    image_annotations[cv2.getTrackbarPos('Frame', 'Label Video')].append(current_annotation)
+                else:
+                    annotation_list = [current_annotation]
+                    image_annotations[cv2.getTrackbarPos('Frame', 'Label Video')] = annotation_list
+
+        # def start_multiple_annotate():
+        #     nonlocal tracker, current_label, is_tracking, trackers
+        #     trackers = cv2.legacy.MultiTracker_create()
+        #     more = True
+        #     while more:
+        #         border_box = cv2.selectROI("Label Video", img, False)
+        #         label = sg.popup_get_text("Enter the label for this object: ", default_text="Smoking")
+        #         if label:
+        #             current_label = label
+        #             tracker = cv2.legacy.TrackerCSRT_create()
+        #             trackers.add(tracker, img, border_box)
+        #             is_tracking = True
+        #             selected_box = img[int(border_box[1]):int(border_box[1] + border_box[3]),
+        #                            int(border_box[0]):int(border_box[0] + border_box[2])]
+        #             cv2.imshow("ROI", selected_box)
+        #             current_annotation = [label, border_box]
+        #             if cv2.getTrackbarPos('Frame', 'Label Video') in image_annotations:
+        #                 image_annotations[cv2.getTrackbarPos('Frame', 'Label Video')].append(current_annotation)
+        #             else:
+        #                 annotation_list = [current_annotation]
+        #                 image_annotations[cv2.getTrackbarPos('Frame', 'Label Video')] = annotation_list
+        #         else:
+        #             more = False
+
+        def draw_rectangle(image, label_name, coordinates):
+            pt1 = (int(coordinates[0]), int(coordinates[1]))
+            pt2 = (int(coordinates[0] + coordinates[2]), int(coordinates[1] + coordinates[3]))
+            cv2.rectangle(image, pt1, pt2, (255, 255, 0), 2, 1)
+            cv2.putText(image, label_name, (int(coordinates[0]), int(coordinates[1]) - 10), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.75,
+                        (0, 255, 255), 2)
 
         cv2.namedWindow('Label Video')
         cv2.createTrackbar('Frame', 'Label Video', 0, length, on_change)
@@ -112,57 +175,56 @@ class VideoAnnotatorApp(MDApp):
         start = cv2.getTrackbarPos('Frame', 'Label Video')
 
         vid_cap.set(cv2.CAP_PROP_POS_FRAMES, start)
-        image_annotations = {}
-        tracker = cv2.TrackerKCF_create()
-        is_tracking = False
-        current_label = 'Smoking'
+
         while vid_cap.isOpened():
             has_frames, img = vid_cap.read()
+            #   if annotated start tracking
             if has_frames:
+                img = rescale_frame(img, percent=50)
                 print(image_annotations)
                 if is_tracking:
                     has_frames, bbox = tracker.update(img)
-                    if has_frames:
-                        p1 = (int(bbox[0]), int(bbox[1]))
-                        p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
-                        cv2.rectangle(img, p1, p2, (255, 255, 0), 2, 1)
-                        cv2.putText(img, current_label, (int(bbox[0]), int(bbox[1])-10), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
-                                    (0, 255, 255), 2)
-                    # else:
-                    #     # Tracking failure
-                    #     cv2.putText(img, "Tracking failure detected", (100, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
-                    #                 (0, 0, 255), 2)
-                current_trackbar += 1
-                cv2.setTrackbarPos('Frame', 'Label Video', current_trackbar)
+                    if current_frame in image_annotations:
+                        annotations = image_annotations.get(current_frame)
+                        for annotation in annotations:
+                            label = annotation[0]
+                            bbox = annotation[1]
+                            draw_rectangle(img, label, bbox)
+                    else:
+                        draw_rectangle(img, current_label, bbox)
+                        annotation = [current_label, bbox]
+                        if current_frame in image_annotations:
+                            image_annotations[current_frame].append(annotation)
+                        else:
+                            annotations = [annotation]
+                            image_annotations[current_frame] = annotations
+
+                current_frame += 1
+
+                cv2.setTrackbarPos('Frame', 'Label Video', current_frame)
                 cv2.imshow("Label Video", img)
                 k = cv2.waitKeyEx(1)
-                if k == 32:
-                    is_tracking = False
-                    cv2.waitKey(-1)
-                # Update trackbar for 'left arrow'
-                on_left_arrow(k)
-                # Update trackbar for 'right arrow'
-                on_right_arrow(k)
-                if current_trackbar == length:
-                    k = cv2.waitKey(0)
-                    on_left_arrow(k)
-                    on_right_arrow(k)
+                if k == 32:  # Pause on space bar
+                    k = cv2.waitKey(-1)
 
+                # Update trackbar for 'left arrow'
+                # elif k == 2424832:
+                #     on_left_arrow()
+                # elif k == 2555904:
+                #     on_right_arrow()
+
+                # Update trackbar for 'right arrow'
+                # on_right_arrow(k)
+                # if current_frame == length:
+                #     k = cv2.waitKey(0)
+                #     on_left_arrow(k)
+                #     on_right_arrow(k)
+                if k == ord('s'):
+                    is_tracking = False
                 if k == ord('t'):
-                    border_box = cv2.selectROI("Label Video", img, False)
-                    label = sg.popup_get_text("Enter the label for this object: ", default_text="Smoking")
-                    current_label = label
-                    tracker = cv2.TrackerKCF_create()
-                    tracker.init(img, border_box)
-                    is_tracking = True
-                    selected_box = img[int(border_box[1]):int(border_box[1] + border_box[3]),
-                                int(border_box[0]):int(border_box[0] + border_box[2])]
-                    cv2.imshow("ROI", selected_box)
-                    annotation = [label, border_box]
-                    if cv2.getTrackbarPos('Frame', 'Label Video') in image_annotations:
-                        image_annotations[cv2.getTrackbarPos('Frame', 'Label Video')] = annotation
-                    else:
-                        image_annotations[cv2.getTrackbarPos('Frame', 'Label Video')] = annotation
+                    start_annotate()
+                    # start_multiple_annotate()
+
                 if k == 81 or k == 113:
                     break
 
