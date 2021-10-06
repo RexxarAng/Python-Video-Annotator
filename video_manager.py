@@ -85,7 +85,7 @@ class VideoManager:
                 #     on_left_arrow(k)
                 #     on_right_arrow(k)
                 if k == ord('s'):
-                    trackers = {}
+                    self.trackers = {}
                     self.save_annotations()
                 if k == ord('t'):
                     self.start_annotate()
@@ -130,25 +130,28 @@ class VideoManager:
         more = True
         while more:
             border_box = cv2.selectROI("Label Video", self.img, False)
-            label_object = sg.popup_get_text("Enter the label for this object: ", default_text="Smoking")
-            if label_object:
-                self.tracker = cv2.TrackerKCF_create()
-                self.tracker.init(self.img, border_box)
-                self.trackers[self.tracker] = label_object
-                selected_box = self.img[int(border_box[1]):int(border_box[1] + border_box[3]),
-                               int(border_box[0]):int(border_box[0] + border_box[2])]
-                self.draw_rectangle(self.img, label_object, border_box)
-                cv2.imshow("ROI", selected_box)
-                current_annotation = [label_object, border_box]
-                if cv2.getTrackbarPos('Frame', 'Label Video') in self.image_annotations:
-                    self.image_annotations[cv2.getTrackbarPos('Frame', 'Label Video')].append(current_annotation)
-                else:
-                    annotation_list = [current_annotation]
-                    self.image_annotations[cv2.getTrackbarPos('Frame', 'Label Video')] = annotation_list
+            # Check if border box is not all 0 (default selectRoi returns (0,0,0,0)) before prompting for object label
+            if all(border_box):
+                label_object = sg.popup_get_text("Enter the label for this object: ", default_text="Smoking")
+                if label_object:
+                    self.tracker = cv2.TrackerKCF_create()
+                    self.tracker.init(self.img, border_box)
+                    self.trackers[self.tracker] = label_object
+                    selected_box = self.img[int(border_box[1]):int(border_box[1] + border_box[3]),
+                                   int(border_box[0]):int(border_box[0] + border_box[2])]
+                    self.draw_rectangle(self.img, label_object, border_box)
+                    cv2.imshow("ROI", selected_box)
+                    current_annotation = [label_object, border_box]
+                    if cv2.getTrackbarPos('Frame', 'Label Video') in self.image_annotations:
+                        self.image_annotations[cv2.getTrackbarPos('Frame', 'Label Video')].append(current_annotation)
+                    else:
+                        annotation_list = [current_annotation]
+                        self.image_annotations[cv2.getTrackbarPos('Frame', 'Label Video')] = annotation_list
             else:
                 more = False
 
-    def draw_rectangle(self, image, label_name, coordinates):
+    @staticmethod
+    def draw_rectangle(image, label_name, coordinates):
         pt1 = (int(coordinates[0]), int(coordinates[1]))
         pt2 = (int(coordinates[0] + coordinates[2]), int(coordinates[1] + coordinates[3]))
         cv2.rectangle(image, pt1, pt2, (255, 255, 0), 2, 1)
