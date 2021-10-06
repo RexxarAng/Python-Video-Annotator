@@ -29,6 +29,7 @@ class VideoAnnotatorApp(MDApp):
             ext=['.mp4']
         )
         self.filepath = ''
+        self.filename = ''
 
     def build(self):
         # self.theme_cls.theme_style = "Dark"

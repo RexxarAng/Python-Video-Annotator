@@ -55,14 +55,19 @@ MDBoxLayout:
                             font_size: 48
                             icon: "pencil"
 
-                    MDLabel:
-                        text: "Video Page"
-                        font_size: 32
-                        halign: "center"
-
                     Image:
                         id: image
-       
+                        size_hint: .8, 1
+
+                    Slider:
+                        id: slider
+                        orientation: 'horizontal'
+                        step: 1
+                        size_hint: .9, .05
+                    Label:
+                        size_hint: .9, .05
+                        text: str(slider.value)
+
             Screen:
                 name: "Directory"
                 MDLabel:

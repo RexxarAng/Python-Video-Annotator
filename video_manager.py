@@ -2,32 +2,36 @@ import cv2
 from kivy.clock import Clock
 from kivy.graphics.texture import Texture
 import PySimpleGUI as sg
+import pascal_voc_io
+from labelFile import *
+import os
 
 
 class VideoManager:
 
     img = None
+    label_file = None
 
     def __init__(self, **kwargs):
         self.widget = kwargs['context']
         self.filepath = kwargs['filepath']
-
         self.vid_cap = cv2.VideoCapture(self.filepath)
         self.length = int(self.vid_cap.get(cv2.CAP_PROP_FRAME_COUNT)) - 1
         self.current_frame = 0
         self.image_annotations = {}
         self.tracker = cv2.TrackerCSRT_create()
         self.trackers = {}
+        self.widget.root.ids.slider.min = 0
+        self.widget.root.ids.slider.max = self.length
+        self.widget.root.ids.slider.step = 1
+        self.filename = os.path.splitext(self.filepath)[0]
 
     def start(self):
         cv2.namedWindow('Label Video')
         cv2.createTrackbar('Frame', 'Label Video', 0, self.length, self.on_change)
         self.on_change(0)
-
         start = cv2.getTrackbarPos('Frame', 'Label Video')
-
         self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, start)
-
         Clock.schedule_interval(self.loop, 1.0/30.0)
 
     def loop(self, *args):
@@ -82,6 +86,7 @@ class VideoManager:
                 #     on_right_arrow(k)
                 if k == ord('s'):
                     trackers = {}
+                    self.save_annotations()
                 if k == ord('t'):
                     self.start_annotate()
                     # start_multiple_annotate()
@@ -97,6 +102,7 @@ class VideoManager:
     def on_change(self, trackbarValue):
         self.current_frame = trackbarValue
         self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, trackbarValue)
+        self.widget.root.ids.slider.value = self.current_frame
         # err, image = vid_cap.read()
         # image = rescale_frame(image, percent=50)
         # cv2.imshow("Label Video", image)
@@ -112,7 +118,8 @@ class VideoManager:
             self.current_frame += 1
             cv2.setTrackbarPos('Frame', 'Label Video', self.current_frame)
 
-    def rescale_frame(self, frame, percent=75):
+    @staticmethod
+    def rescale_frame(frame, percent=75):
         width = int(frame.shape[1] * percent / 100)
         height = int(frame.shape[0] * percent / 100)
         dim = (width, height)
@@ -148,6 +155,17 @@ class VideoManager:
         cv2.putText(image, label_name, (int(coordinates[0]), int(coordinates[1]) - 10), cv2.FONT_HERSHEY_SIMPLEX,
                     0.75,
                     (0, 255, 255), 2)
+
+    def save_annotations(self):
+        try:
+            if self.label_file is None:
+                self.label_file = LabelFile()
+                self.label_file.verified = False
+            self.label_file.save_pascal_voc_format(filename=self.filename, annotations=self.image_annotations, video_path=self.filepath, image_shape=self.img.shape)
+
+        except LabelFileError as e:
+            print("Error!")
+            return False
 
     def __del__(self):
         self.vid_cap.release()
