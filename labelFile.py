@@ -175,15 +175,7 @@ class LabelFile(object):
 
         return int(x_min), int(y_min), int(x_max), int(y_max)
 
-    @staticmethod
-    def convert_points_to_cv2_bnd_box(points):
-        x_min = points[0]
-        y_min = points[1]
-        x_max = points[2]
-        y_max = points[3]
-        width = int(x_max) - int(x_min)
-        height = int(y_max) - int(y_min)
-        return x_min, y_min, width, height
+
 
     @staticmethod
     def convert_cv2_bnd_box_to_points(bnd_box):

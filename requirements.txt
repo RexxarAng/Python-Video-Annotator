@@ -1,6 +1,6 @@
 kivy==2.0.0
 kivymd==0.104.2
 opencv-contrib-python
-pysimplegui
+pysimplegui~=4.49.0
 pascal-voc-writer
-lxml
+lxml~=4.6.3

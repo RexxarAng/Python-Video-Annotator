@@ -42,7 +42,7 @@ class PascalVocWriter:
                 self.img_size is None:
             return None
 
-        top = Element('annotation')
+        top = Element('annotations')
         if self.verified:
             top.set('verified', 'yes')
 
@@ -76,10 +76,8 @@ class PascalVocWriter:
         return top
 
     def add_bnd_box(self, x_min, y_min, x_max, y_max, name, difficult, frame):
-        bnd_box = {'xmin': x_min, 'ymin': y_min, 'xmax': x_max, 'ymax': y_max}
-        bnd_box['frame'] = frame
-        bnd_box['name'] = name
-        bnd_box['difficult'] = difficult
+        bnd_box = {'xmin': x_min, 'ymin': y_min, 'xmax': x_max, 'ymax': y_max, 'frame': frame, 'name': name,
+                   'difficult': difficult}
         self.box_list.append(bnd_box)
 
     def add_bnd_box_frame(self, frame_object):
@@ -92,20 +90,20 @@ class PascalVocWriter:
         self.box_list.append(frame_array)
 
     def append_objects(self, top):
-        start_frame = SubElement(top, 'StartFrame')
-        end_frame = SubElement(top, 'EndFrame')
-        main_annotations = SubElement(top, 'Frames')
+        start_frame = SubElement(top, 'startframe')
+        end_frame = SubElement(top, 'endframe')
+        main_annotations = SubElement(top, 'frames')
         start_frame.text = str(self.box_list[0][0]['frame'])
         end_frame.text = str(self.box_list[-1][-1]['frame'])
         for frame_array in self.box_list:
-            object_item = SubElement(main_annotations, 'F'+str(frame_array[0]['frame']))
+            frame_object = SubElement(main_annotations, 'frame')
+            frame_number = SubElement(frame_object, "framenumber")
+            frame_number.text = str(frame_array[0]['frame'])
             for each_object in frame_array:
-                # frame = SubElement(object_item, 'frame')
-                # frame.text = str(each_object['frame'])
-                print(each_object)
-                name = SubElement(object_item, 'name')
+                annotation = SubElement(frame_object, 'annotation')
+                name = SubElement(annotation, 'name')
                 name.text = str(each_object['name'])
-                truncated = SubElement(object_item, 'truncated')
+                truncated = SubElement(annotation, 'truncated')
                 if int(float(each_object['ymax'])) == int(float(self.img_size[0])) or (
                         int(float(each_object['ymin'])) == 1):
                     truncated.text = "1"  # max == height or minz
@@ -116,7 +114,7 @@ class PascalVocWriter:
                     truncated.text = "0"
                 # difficult = SubElement(object_item, 'difficult')
                 # difficult.text = str(bool(each_object['difficult']) & 1)
-                bnd_box = SubElement(object_item, 'bndbox')
+                bnd_box = SubElement(annotation, 'bndbox')
                 x_min = SubElement(bnd_box, 'xmin')
                 x_min.text = str(each_object['xmin'])
                 y_min = SubElement(bnd_box, 'ymin')
@@ -146,6 +144,7 @@ class PascalVocReader:
     def __init__(self, file_path):
         # shapes type:
         # [labbel, [(x1,y1), (x2,y2), (x3,y3), (x4,y4)], color, color, difficult]
+        self.annotations = {}
         self.shapes = []
         self.file_path = file_path
         self.verified = False
@@ -157,6 +156,9 @@ class PascalVocReader:
     def get_shapes(self):
         return self.shapes
 
+    def get_annotations(self):
+        return self.annotations
+
     def add_shape(self, label, bnd_box, difficult):
         x_min = int(float(bnd_box.find('xmin').text))
         y_min = int(float(bnd_box.find('ymin').text))
@@ -164,6 +166,16 @@ class PascalVocReader:
         y_max = int(float(bnd_box.find('ymax').text))
         points = [(x_min, y_min), (x_max, y_min), (x_max, y_max), (x_min, y_max)]
         self.shapes.append((label, points, None, None, difficult))
+
+    @staticmethod
+    def convert_points_to_cv2_bnd_box(bnd_box):
+        x_min = int(float(bnd_box.find('xmin').text))
+        y_min = int(float(bnd_box.find('ymin').text))
+        x_max = int(float(bnd_box.find('xmax').text))
+        y_max = int(float(bnd_box.find('ymax').text))
+        width = int(x_max) - int(x_min)
+        height = int(y_max) - int(y_min)
+        return (x_min, y_min, width, height)
 
     def parse_xml(self):
         assert self.file_path.endswith(XML_EXT), "Unsupported file format"
@@ -176,13 +188,20 @@ class PascalVocReader:
                 self.verified = True
         except KeyError:
             self.verified = False
-
-        for object_iter in xml_tree.findall('object'):
-            bnd_box = object_iter.find("bndbox")
-            label = object_iter.find('name').text
-            # Add chris
-            difficult = False
-            if object_iter.find('difficult') is not None:
-                difficult = bool(int(object_iter.find('difficult').text))
-            self.add_shape(label, bnd_box, difficult)
+        self.annotations = {}
+        frames = xml_tree.find('frames')
+        for object_iter in frames.iter('frame'):
+            frame_number = int(object_iter.find('framenumber').text)
+            annotations = []
+            for annotation_iter in object_iter.iter('annotation'):
+                bnd_box = annotation_iter.find('bndbox')
+                bnd_box = self.convert_points_to_cv2_bnd_box(bnd_box)
+                label = annotation_iter.find('name').text
+                annotations.append([label, bnd_box])
+                # Add chris
+                difficult = False
+                if object_iter.find('difficult') is not None:
+                    difficult = bool(int(object_iter.find('difficult').text))
+                # self.add_shape(label, bnd_box, difficult)
+            self.annotations[frame_number] = annotations
         return True

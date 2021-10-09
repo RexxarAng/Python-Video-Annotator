@@ -2,15 +2,16 @@ import cv2
 from kivy.clock import Clock
 from kivy.graphics.texture import Texture
 import PySimpleGUI as sg
-import pascal_voc_io
 from labelFile import *
 import os
+from pascal_voc_io import PascalVocReader
 
 
 class VideoManager:
 
     img = None
     label_file = None
+    window_name = 'Annotate Video'
 
     def __init__(self, **kwargs):
         self.widget = kwargs['context']
@@ -25,23 +26,38 @@ class VideoManager:
         self.widget.root.ids.slider.max = self.length
         self.widget.root.ids.slider.step = 1
         self.filename = os.path.splitext(self.filepath)[0]
+        self.play_speed = 50
 
     def start(self):
-        cv2.namedWindow('Label Video')
-        cv2.createTrackbar('Frame', 'Label Video', 0, self.length, self.on_change)
-        self.on_change(0)
-        start = cv2.getTrackbarPos('Frame', 'Label Video')
-        self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, start)
-        Clock.schedule_interval(self.loop, 1.0/30.0)
+        xml_path = os.path.join(self.filepath, self.filename + '.xml')
+        if os.path.isfile(xml_path):
+            self.load_pascal_xml_by_filename(xml_path)
+        try:
+            cv2.namedWindow(self.window_name)
+            cv2.createTrackbar('Frame', self.window_name, 0, self.length, self.on_change)
+            cv2.createTrackbar('Delay', self.window_name, self.play_speed, 100, self.set_speed)
+            start = cv2.getTrackbarPos('Frame', self.window_name)
+            self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, start)
+            Clock.schedule_interval(self.loop, 1.0/30.0)
+        except:
+            cv2.namedWindow(self.window_name)
+            cv2.createTrackbar('Frame', self.window_name, 0, self.length, self.on_change)
+            cv2.createTrackbar('Delay', self.window_name, self.play_speed, 100, self.set_speed)
+            start = cv2.getTrackbarPos('Frame', self.window_name)
+            self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, start)
+            Clock.schedule_interval(self.loop, 1.0 / 30.0)
 
     def loop(self, *args):
+        # Destroy window if user click on the x on the window
+        if cv2.getWindowProperty(self.window_name, cv2.WND_PROP_VISIBLE) < 1:
+            self.__del__()
         if self.vid_cap.isOpened():
             has_frames, img = self.vid_cap.read()
             #   if annotated start tracking
             if has_frames:
                 # self.img = self.rescale_frame(img, percent=50)
-                self.img = img
-                print(self.image_annotations)
+                self.img = self.rescale_frame(img, percent=50)
+                img = self.rescale_frame(img, percent=50)
                 if self.current_frame in self.image_annotations:
                     annotations = self.image_annotations.get(self.current_frame)
                     for annotation in annotations:
@@ -61,14 +77,14 @@ class VideoManager:
                                 self.image_annotations[self.current_frame] = annotations
 
                 self.current_frame += 1
-                cv2.setTrackbarPos('Frame', 'Label Video', self.current_frame)
-                cv2.imshow("Label Video", img)
+                cv2.setTrackbarPos('Frame', self.window_name, self.current_frame)
+                cv2.imshow(self.window_name, img)
                 self.widget.root.ids.image_frame = img
                 buffer = cv2.flip(img, 0).tostring()
                 texture = Texture.create(size=(img.shape[1], img.shape[0]), colorfmt='bgr')
                 texture.blit_buffer(buffer, colorfmt='bgr', bufferfmt='ubyte')
                 self.widget.root.ids.image.texture = texture
-                k = cv2.waitKeyEx(1)
+                k = cv2.waitKeyEx(self.play_speed)
                 if k == 32:  # Pause on space bar
                     k = cv2.waitKey(-1)
 
@@ -84,6 +100,8 @@ class VideoManager:
                 #     k = cv2.waitKey(0)
                 #     on_left_arrow(k)
                 #     on_right_arrow(k)
+                if k == ord('d'):
+                    self.popup_select()
                 if k == ord('s'):
                     self.trackers = {}
                     self.save_annotations()
@@ -92,17 +110,19 @@ class VideoManager:
                     # start_multiple_annotate()
 
                 if k == 81 or k == 113:
-                    return
+                    self.__del__()
 
-                if cv2.getWindowProperty('Label Video', cv2.WND_PROP_VISIBLE) < 1:
-                    return
             else:
                 return
 
+    def set_speed(self, val):
+        self.play_speed = max(val, 1)
+
     def on_change(self, trackbarValue):
-        self.current_frame = trackbarValue
-        self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, trackbarValue)
-        self.widget.root.ids.slider.value = self.current_frame
+        self.widget.root.ids.slider.value = trackbarValue
+        if not (trackbarValue == self.current_frame):
+            self.current_frame = trackbarValue
+            self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, trackbarValue)
         # err, image = vid_cap.read()
         # image = rescale_frame(image, percent=50)
         # cv2.imshow("Label Video", image)
@@ -111,12 +131,12 @@ class VideoManager:
     def on_left_arrow(self):
         if self.current_frame > 0:
             self.current_frame -= 1
-            cv2.setTrackbarPos('Frame', 'Label Video', self.current_frame)
+            cv2.setTrackbarPos('Frame', self.window_name, self.current_frame)
 
     def on_right_arrow(self):
         if self.current_frame < self.length:
             self.current_frame += 1
-            cv2.setTrackbarPos('Frame', 'Label Video', self.current_frame)
+            cv2.setTrackbarPos('Frame', self.window_name, self.current_frame)
 
     @staticmethod
     def rescale_frame(frame, percent=75):
@@ -129,12 +149,12 @@ class VideoManager:
         self.trackers = {}
         more = True
         while more:
-            border_box = cv2.selectROI("Label Video", self.img, False)
+            border_box = cv2.selectROI(self.window_name, self.img, False)
             # Check if border box is not all 0 (default selectRoi returns (0,0,0,0)) before prompting for object label
             if all(border_box):
                 label_object = sg.popup_get_text("Enter the label for this object: ", default_text="Smoking")
                 if label_object:
-                    self.tracker = cv2.TrackerKCF_create()
+                    self.tracker = cv2.TrackerCSRT_create()
                     self.tracker.init(self.img, border_box)
                     self.trackers[self.tracker] = label_object
                     selected_box = self.img[int(border_box[1]):int(border_box[1] + border_box[3]),
@@ -142,13 +162,27 @@ class VideoManager:
                     self.draw_rectangle(self.img, label_object, border_box)
                     cv2.imshow("ROI", selected_box)
                     current_annotation = [label_object, border_box]
-                    if cv2.getTrackbarPos('Frame', 'Label Video') in self.image_annotations:
-                        self.image_annotations[cv2.getTrackbarPos('Frame', 'Label Video')].append(current_annotation)
+                    if cv2.getTrackbarPos('Frame', self.window_name) in self.image_annotations:
+                        self.image_annotations[cv2.getTrackbarPos('Frame', self.window_name)].append(current_annotation)
                     else:
                         annotation_list = [current_annotation]
-                        self.image_annotations[cv2.getTrackbarPos('Frame', 'Label Video')] = annotation_list
+                        self.image_annotations[cv2.getTrackbarPos('Frame', self.window_name)] = annotation_list
             else:
                 more = False
+
+    # def popup_select(self, select_multiple=False):
+    #     layout = [[sg.Listbox(self.trackers.values(), key='_LIST_', size=(45, len(self.trackers)),
+    #                           select_mode='extended' if select_multiple else 'single'
+    #                           , bind_return_key=True), sg.OK("Delete")]]
+    #     window = sg.Window('Delete tracker', layout=layout)
+    #     event, values = window.read()
+    #     window.close()
+    #     del window
+    #     if select_multiple or values['_LIST_'] is None:
+    #         print(values)
+    #         return
+    #     else:
+    #         return
 
     @staticmethod
     def draw_rectangle(image, label_name, coordinates):
@@ -169,6 +203,18 @@ class VideoManager:
         except LabelFileError as e:
             print("Error!")
             return False
+
+    def load_pascal_xml_by_filename(self, xml_path):
+        if self.filepath is None:
+            return
+        if os.path.isfile(xml_path) is False:
+            return
+
+        t_voc_parse_reader = PascalVocReader(xml_path)
+        self.image_annotations = t_voc_parse_reader.get_annotations()
+        # shapes = t_voc_parse_reader.get_shapes();
+        # self.load_labels(shapes)
+        # self.canvas.verified = t_voc_parse_reader.verified
 
     def __del__(self):
         self.vid_cap.release()
