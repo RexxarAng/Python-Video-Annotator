@@ -7,6 +7,8 @@ from kivymd.uix.filemanager import MDFileManager
 from kivymd.toast import toast
 import os
 from video_manager import VideoManager
+from screens.video_annotation_screen import VideoAnnotator
+from kivy.uix.screenmanager import ScreenManager, Screen
 
 
 class NavigationLayout:
@@ -19,6 +21,9 @@ class ContentNavigationDrawer(BoxLayout):
 
 
 class VideoAnnotatorApp(MDApp):
+
+    video_annotator = None
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         Window.bind(on_keyboard=self.events)
@@ -39,6 +44,9 @@ class VideoAnnotatorApp(MDApp):
         self.theme_cls.accent_palette = "Teal"
         # Builder.load_file("videoscreen.kv")
         return Builder.load_file("main.kv")
+
+    def on_start(self):
+        self.open_annotator()
 
     def file_manager_open(self):
         self.file_manager.show(os.path.abspath("../"))  # output manager to the screen
@@ -73,6 +81,16 @@ class VideoAnnotatorApp(MDApp):
     def open_video(self):
         self.video_manager = VideoManager(context=self, filepath=self.filepath)
         self.video_manager.start()
+
+    def open_annotator(self):
+        self.root.ids.nav_drawer.set_state("close")
+        self.root.ids.screen_manager.current = "Annotator"
+        self.video_annotator = VideoAnnotator()
+        print(self.root.ids.annotator_screen)
+        # self.root.ids.annotator_screen.remove_all_widgets()
+        self.root.ids.annotator_screen.clear_widgets()
+        self.root.ids.annotator_screen.add_widget(self.video_annotator)
+        # self.video_annotator.start()
 
 
 if __name__ == "__main__":

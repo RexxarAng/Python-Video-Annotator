@@ -1,13 +1,15 @@
 #:import rgba kivy.utils.get_color_from_hex
+#:import VideoAnnotationScreen screens.video_annotation_screen
 <ContentNavigationDrawer>
     ScrollView:
         MDList:
             id: md_list
             OneLineAvatarListItem:
-                text: "Open Folder"
+                text: "Annotator"
                 on_press:
                     root.nav_drawer.set_state("close")
-                    root.screen_manager.current = "Directory"
+                    root.screen_manager.current = "Annotator"
+                    app.open_annotator()
                 IconLeftWidget:
                     icon: "file"
             OneLineAvatarListItem:
@@ -69,12 +71,8 @@ MDBoxLayout:
                         text: str(slider.value)
 
             Screen:
-                name: "Directory"
-                MDLabel:
-                    text: "Directory Page"
-                    font_size: 32
-                    halign: "center"
-                    
+                id: annotator_screen
+                name: "Annotator"
 
             Screen:
                 id: verify_page
