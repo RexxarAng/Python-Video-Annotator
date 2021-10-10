@@ -1,0 +1,16 @@
+#:import rgba kivy.utils.get_color_from_hex
+
+MDGridLayout:
+    id: main_grid
+    adaptive_height: False
+    cols: 2
+    md_bg_color: rgba("#24272C")
+
+    AnnotationCanvas:
+        id: annotation_canvas
+
+    ScrollView:
+        size_hint_x: 0.3
+        MDList:
+            id: annotation_list
+            md_bg_color: rgba("#34373C")
