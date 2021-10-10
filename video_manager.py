@@ -9,6 +9,7 @@ from pascal_voc_io import PascalVocReader
 
 class VideoManager:
 
+    clock = None
     img = None
     label_file = None
     window_name = 'Annotate Video'
@@ -32,25 +33,36 @@ class VideoManager:
         xml_path = os.path.join(self.filepath, self.filename + '.xml')
         if os.path.isfile(xml_path):
             self.load_pascal_xml_by_filename(xml_path)
-        try:
-            cv2.namedWindow(self.window_name)
-            cv2.createTrackbar('Frame', self.window_name, 0, self.length, self.on_change)
-            cv2.createTrackbar('Delay', self.window_name, self.play_speed, 100, self.set_speed)
-            start = cv2.getTrackbarPos('Frame', self.window_name)
-            self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, start)
-            Clock.schedule_interval(self.loop, 1.0/30.0)
-        except:
-            cv2.namedWindow(self.window_name)
-            cv2.createTrackbar('Frame', self.window_name, 0, self.length, self.on_change)
-            cv2.createTrackbar('Delay', self.window_name, self.play_speed, 100, self.set_speed)
-            start = cv2.getTrackbarPos('Frame', self.window_name)
-            self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, start)
-            Clock.schedule_interval(self.loop, 1.0 / 30.0)
+
+        cv2.namedWindow(self.window_name)
+        cv2.createTrackbar('Frame', self.window_name, 0, self.length, self.on_change)
+        cv2.createTrackbar('Delay', self.window_name, self.play_speed, 100, self.set_speed)
+        start = cv2.getTrackbarPos('Frame', self.window_name)
+        self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, start)
+        self.clock = Clock.schedule_interval(self.loop, 1.0 / 30.0)
+
+    def add_tracker(self, img, label, borderbox):
+        self.tracker = cv2.TrackerCSRT_create()
+        self.tracker.init(img, borderbox)
+        self.trackers[self.tracker] = label
+
+    def remove_tracker(self, tracker):
+        self.trackers.pop(tracker)
+
+    def track(self, img):
+        image_annotations = []
+        for tracker, label in self.trackers.items():
+            has_frames, bbox = tracker.update(img)
+            if has_frames:
+                bbox = LabelFile.convert_cv2_bnd_box_to_points(bbox)
+                annotation = [label, bbox]
+                image_annotations.append(annotation)
+        return image_annotations
 
     def loop(self, *args):
         # Destroy window if user click on the x on the window
         if cv2.getWindowProperty(self.window_name, cv2.WND_PROP_VISIBLE) < 1:
-            self.__del__()
+            self.stop_all_resources()
         if self.vid_cap.isOpened():
             has_frames, img = self.vid_cap.read()
             #   if annotated start tracking
@@ -100,8 +112,8 @@ class VideoManager:
                 #     k = cv2.waitKey(0)
                 #     on_left_arrow(k)
                 #     on_right_arrow(k)
-                if k == ord('d'):
-                    self.popup_select()
+                # if k == ord('d'):
+                #     self.popup_select()
                 if k == ord('s'):
                     self.trackers = {}
                     self.save_annotations()
@@ -110,7 +122,7 @@ class VideoManager:
                     # start_multiple_annotate()
 
                 if k == 81 or k == 113:
-                    self.__del__()
+                    self.stop_all_resources()
 
             else:
                 return
@@ -123,9 +135,6 @@ class VideoManager:
         if not (trackbarValue == self.current_frame):
             self.current_frame = trackbarValue
             self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, trackbarValue)
-        # err, image = vid_cap.read()
-        # image = rescale_frame(image, percent=50)
-        # cv2.imshow("Label Video", image)
 
     # Update trackbar
     def on_left_arrow(self):
@@ -216,6 +225,11 @@ class VideoManager:
         # self.load_labels(shapes)
         # self.canvas.verified = t_voc_parse_reader.verified
 
-    def __del__(self):
+    def stop_all_resources(self):
+        self.clock.release()
         self.vid_cap.release()
-        cv2.destroyAllWindows()
+        print('stop_all_resources')
+
+    def __del__(self):
+        self.stop_all_resources()
+        print('__del__ videomanager')

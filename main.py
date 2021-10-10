@@ -30,6 +30,7 @@ class VideoAnnotatorApp(MDApp):
         )
         self.filepath = ''
         self.filename = ''
+        self.video_manager = None
 
     def build(self):
         # self.theme_cls.theme_style = "Dark"
@@ -70,8 +71,8 @@ class VideoAnnotatorApp(MDApp):
         return True
 
     def open_video(self):
-        video_manager = VideoManager(context=self, filepath=self.filepath)
-        video_manager.start()
+        self.video_manager = VideoManager(context=self, filepath=self.filepath)
+        self.video_manager.start()
 
 
 if __name__ == "__main__":
