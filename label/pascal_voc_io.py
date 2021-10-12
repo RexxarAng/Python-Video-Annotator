@@ -1,4 +1,3 @@
-import sys
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element, SubElement
 from lxml import etree
@@ -75,11 +74,6 @@ class PascalVocWriter:
         segmented.text = '0'
         return top
 
-    def add_bnd_box(self, x_min, y_min, x_max, y_max, name, difficult, frame):
-        bnd_box = {'xmin': x_min, 'ymin': y_min, 'xmax': x_max, 'ymax': y_max, 'frame': frame, 'name': name,
-                   'difficult': difficult}
-        self.box_list.append(bnd_box)
-
     def add_bnd_box_frame(self, frame_object):
         frame_array = []
         for frame in frame_object:
@@ -106,14 +100,12 @@ class PascalVocWriter:
                 truncated = SubElement(annotation, 'truncated')
                 if int(float(each_object['ymax'])) == int(float(self.img_size[0])) or (
                         int(float(each_object['ymin'])) == 1):
-                    truncated.text = "1"  # max == height or minz
+                    truncated.text = "1"  # max == height or min
                 elif (int(float(each_object['xmax'])) == int(float(self.img_size[1]))) or (
                         int(float(each_object['xmin'])) == 1):
                     truncated.text = "1"  # max == width or min
                 else:
                     truncated.text = "0"
-                # difficult = SubElement(object_item, 'difficult')
-                # difficult.text = str(bool(each_object['difficult']) & 1)
                 bnd_box = SubElement(annotation, 'bndbox')
                 x_min = SubElement(bnd_box, 'xmin')
                 x_min.text = str(each_object['xmin'])
@@ -142,10 +134,7 @@ class PascalVocWriter:
 class PascalVocReader:
 
     def __init__(self, file_path):
-        # shapes type:
-        # [labbel, [(x1,y1), (x2,y2), (x3,y3), (x4,y4)], color, color, difficult]
         self.annotations = {}
-        self.shapes = []
         self.file_path = file_path
         self.verified = False
         try:
@@ -153,19 +142,8 @@ class PascalVocReader:
         except:
             pass
 
-    def get_shapes(self):
-        return self.shapes
-
     def get_annotations(self):
         return self.annotations
-
-    def add_shape(self, label, bnd_box, difficult):
-        x_min = int(float(bnd_box.find('xmin').text))
-        y_min = int(float(bnd_box.find('ymin').text))
-        x_max = int(float(bnd_box.find('xmax').text))
-        y_max = int(float(bnd_box.find('ymax').text))
-        points = [(x_min, y_min), (x_max, y_min), (x_max, y_max), (x_min, y_max)]
-        self.shapes.append((label, points, None, None, difficult))
 
     @staticmethod
     def convert_points_to_cv2_bnd_box(bnd_box):
@@ -175,7 +153,7 @@ class PascalVocReader:
         y_max = int(float(bnd_box.find('ymax').text))
         width = int(x_max) - int(x_min)
         height = int(y_max) - int(y_min)
-        return (x_min, y_min, width, height)
+        return x_min, y_min, width, height
 
     def parse_xml(self):
         assert self.file_path.endswith(XML_EXT), "Unsupported file format"
@@ -198,10 +176,5 @@ class PascalVocReader:
                 bnd_box = self.convert_points_to_cv2_bnd_box(bnd_box)
                 label = annotation_iter.find('name').text
                 annotations.append([label, bnd_box])
-                # Add chris
-                difficult = False
-                if object_iter.find('difficult') is not None:
-                    difficult = bool(int(object_iter.find('difficult').text))
-                # self.add_shape(label, bnd_box, difficult)
             self.annotations[frame_number] = annotations
         return True

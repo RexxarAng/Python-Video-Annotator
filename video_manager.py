@@ -2,9 +2,9 @@ import cv2
 from kivy.clock import Clock
 from kivy.graphics.texture import Texture
 import PySimpleGUI as sg
-from labelFile import *
 import os
-from pascal_voc_io import PascalVocReader
+from label.labelFile import LabelFile
+from label.pascal_voc_io import PascalVocReader
 
 
 class VideoManager:

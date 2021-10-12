@@ -1,20 +1,6 @@
-# Copyright (c) 2016 Tzutalin
-# Create by TzuTaLin <tzu.ta.lin@gmail.com>
-
-# try:
-#     from PyQt5.QtGui import QImage
-# except ImportError:
-#     from PyQt4.QtGui import QImage
-
-from base64 import b64encode, b64decode
-from pascal_voc_io import PascalVocWriter
-# from libs.yolo_io import YOLOWriter
-from pascal_voc_io import XML_EXT
-# from libs.create_ml_io import CreateMLWriter
-# from libs.create_ml_io import JSON_EXT
+from label.pascal_voc_io import PascalVocWriter, XML_EXT
 from enum import Enum
 import os.path
-import sys
 
 
 class LabelFileFormat(Enum):
@@ -38,35 +24,12 @@ class LabelFile(object):
         self.image_data = None
         self.verified = False
 
-    # def save_create_ml_format(self, filename, shapes, image_path, image_data, class_list, line_color=None, fill_color=None, database_src=None):
-    #     img_folder_name = os.path.basename(os.path.dirname(image_path))
-    #     img_file_name = os.path.basename(image_path)
-    #
-    #     image = QImage()
-    #     image.load(image_path)
-    #     image_shape = [image.height(), image.width(),
-    #                    1 if image.isGrayscale() else 3]
-    #     writer = CreateMLWriter(img_folder_name, img_file_name,
-    #                             image_shape, shapes, filename, local_img_path=image_path)
-    #     writer.verified = self.verified
-    #     writer.write()
-
     def save_pascal_voc_format(self, filename, annotations, video_path, image_shape, line_color=None, fill_color=None,
                                database_src=None):
         filename += ".xml"
         video_folder_path = os.path.dirname(video_path)
         video_folder_name = os.path.split(video_folder_path)[-1]
         video_file_name = os.path.basename(video_path)
-        # imgFileNameWithoutExt = os.path.splitext(img_file_name)[0]
-        # Read from file path because self.imageData might be empty if saving to
-        # Pascal format
-        # if isinstance(image_data, QImage):
-        #     image = image_data
-        # else:
-        #     image = QImage()
-        # #     image.load(image_path)
-        # image_shape = [image.height(), image.width(),
-        #                1 if image.isGrayscale() else 3]
         writer = PascalVocWriter(video_folder_name, video_file_name,
                                  image_shape, local_img_path=video_path)
         writer.verified = self.verified
@@ -77,41 +40,10 @@ class LabelFile(object):
                 label = annotation[0]
                 bnd_box = LabelFile.convert_cv2_bnd_box_to_points(annotation[1])
                 frame_object.append([bnd_box, label, frame])
-                # writer.add_bnd_box(bnd_box[0], bnd_box[1], bnd_box[2], bnd_box[3], label, difficult, frame)
             writer.add_bnd_box_frame(frame_object)
 
         writer.save(target_file=filename)
         return
-
-    # def save_yolo_format(self, filename, shapes, image_path, image_data, class_list,
-    #                      line_color=None, fill_color=None, database_src=None):
-    #     img_folder_path = os.path.dirname(image_path)
-    #     img_folder_name = os.path.split(img_folder_path)[-1]
-    #     img_file_name = os.path.basename(image_path)
-    #     # imgFileNameWithoutExt = os.path.splitext(img_file_name)[0]
-    #     # Read from file path because self.imageData might be empty if saving to
-    #     # Pascal format
-    #     if isinstance(image_data, QImage):
-    #         image = image_data
-    #     else:
-    #         image = QImage()
-    #         image.load(image_path)
-    #     image_shape = [image.height(), image.width(),
-    #                    1 if image.isGrayscale() else 3]
-    #     writer = YOLOWriter(img_folder_name, img_file_name,
-    #                         image_shape, local_img_path=image_path)
-    #     writer.verified = self.verified
-    #
-    #     for shape in shapes:
-    #         points = shape['points']
-    #         label = shape['label']
-    #         # Add Chris
-    #         difficult = int(shape['difficult'])
-    #         bnd_box = LabelFile.convert_points_to_bnd_box(points)
-    #         writer.add_bnd_box(bnd_box[0], bnd_box[1], bnd_box[2], bnd_box[3], label, difficult)
-    #
-    #     writer.save(target_file=filename, class_list=class_list)
-    #     return
 
     def toggle_verify(self):
         self.verified = not self.verified
