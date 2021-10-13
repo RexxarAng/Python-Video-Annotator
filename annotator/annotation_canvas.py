@@ -1,4 +1,3 @@
-
 from kivy.config import Config
 from kivymd.uix.floatlayout import MDFloatLayout
 
@@ -117,19 +116,23 @@ class AnnotationCanvas(MDFloatLayout):
         self.current_label = label_name
 
     def remove_annotation_at_index(self, index):
-        print('removing')
         if index >= len(self.annotations) or index < 0:
             print('cannot remove')
             return
 
-        self.canvas.remove(self.annotations[index].drawing)
-        self.annotations.pop(index)
+        annotation_to_remove = self.annotations[index]
+
+        self.remove_annotation(annotation_to_remove)
 
     def remove_selected_annotation(self):
         if self.selected_annotation:
-            self.selected_annotation.remove_graphic()
-            self.annotations.remove(self.selected_annotation)
-            self.post_event(AnnotationDeletedEvent(annotation=self.selected_annotation))
-            self.selected_annotation = None
+            self.remove_annotation(self.selected_annotation)
 
-    # def on_create_annotation(self, func, ):
+    def remove_annotation(self, annotation):
+        if annotation:
+            annotation.remove_graphic()
+            self.annotations.remove(annotation)
+            self.post_event(AnnotationDeletedEvent(annotation=annotation))
+
+            if annotation == self.selected_annotation:
+                self.selected_annotation = None

@@ -204,6 +204,7 @@ class AnnotationGraphic(BoundingBox, CanvasGraphic, IDraggable, IResizable):
         self._redraw_resize_hint()
 
     def remove_graphic(self):
+        self.display_resize_hint(False)
         self.parent.canvas.remove(self._border_box)
         self.parent.canvas.remove(self._label)
-        [self.parent.canvas.remove(resize_box) for resize_box in self._resize_boxes]
+
