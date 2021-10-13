@@ -20,7 +20,8 @@ class LabelFile(object):
 
     def __init__(self, filename=None):
         self.shapes = ()
-        self.image_path = None
+        self.filename = filename
+        self.video_path = None
         self.image_data = None
         self.verified = False
 
@@ -31,51 +32,29 @@ class LabelFile(object):
         video_folder_name = os.path.split(video_folder_path)[-1]
         video_file_name = os.path.basename(video_path)
         writer = PascalVocWriter(video_folder_name, video_file_name,
-                                 image_shape, local_img_path=video_path)
+                                 image_shape, local_vid_path=video_path)
         writer.verified = self.verified
-        difficult = False
         for frame in annotations:
             frame_object = []
             for annotation in annotations[frame]:
                 label = annotation[0]
                 bnd_box = LabelFile.convert_cv2_bnd_box_to_points(annotation[1])
-                frame_object.append([bnd_box, label, frame])
+                verified = annotation[2]
+                frame_object.append([bnd_box, label, frame, verified])
             writer.add_bnd_box_frame(frame_object)
 
         writer.save(target_file=filename)
         return
 
-    def toggle_verify(self):
-        self.verified = not self.verified
-
-    ''' ttf is disable
-    def load(self, filename):
-        import json
-        with open(filename, 'rb') as f:
-                data = json.load(f)
-                imagePath = data['imagePath']
-                imageData = b64decode(data['imageData'])
-                lineColor = data['lineColor']
-                fillColor = data['fillColor']
-                shapes = ((s['label'], s['points'], s['line_color'], s['fill_color'])\
-                        for s in data['shapes'])
-                # Only replace data after everything is loaded.
-                self.shapes = shapes
-                self.imagePath = imagePath
-                self.imageData = imageData
-                self.lineColor = lineColor
-                self.fillColor = fillColor
-
-    def save(self, filename, shapes, imagePath, imageData, lineColor=None, fillColor=None):
-        import json
-        with open(filename, 'wb') as f:
-                json.dump(dict(
-                    shapes=shapes,
-                    lineColor=lineColor, fillColor=fillColor,
-                    imagePath=imagePath,
-                    imageData=b64encode(imageData)),
-                    f, ensure_ascii=True, indent=2)
-    '''
+    @staticmethod
+    def toggle_verify(filename, frame, video_path, image_shape):
+        filename += ".xml"
+        video_folder_path = os.path.dirname(video_path)
+        video_folder_name = os.path.split(video_folder_path)[-1]
+        video_file_name = os.path.basename(video_path)
+        writer = PascalVocWriter(video_folder_name, video_file_name,
+                                 image_shape, local_vid_path=video_path)
+        writer.toggle_verify(frame, filename)
 
     @staticmethod
     def is_label_file(filename):

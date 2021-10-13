@@ -10,14 +10,13 @@ DEFAULT_ENCODING = 'utf-8'
 
 class PascalVocWriter:
 
-    def __init__(self, folder_name, filename, img_size, database_src='Unknown', local_img_path=None):
+    def __init__(self, folder_name, filename, img_size, database_src='Unknown', local_vid_path=None):
         self.folder_name = folder_name
         self.filename = filename
         self.database_src = database_src
         self.img_size = img_size
         self.box_list = []
-        self.local_img_path = local_img_path
-        self.verified = False
+        self.local_vid_path = local_vid_path
 
     def prettify(self, elem):
         """
@@ -42,8 +41,8 @@ class PascalVocWriter:
             return None
 
         top = Element('annotations')
-        if self.verified:
-            top.set('verified', 'yes')
+        # if self.verified:
+        #     top.set('verified', 'yes')
 
         folder = SubElement(top, 'folder')
         folder.text = self.folder_name
@@ -51,9 +50,9 @@ class PascalVocWriter:
         filename = SubElement(top, 'filename')
         filename.text = self.filename
 
-        if self.local_img_path is not None:
+        if self.local_vid_path is not None:
             local_img_path = SubElement(top, 'path')
-            local_img_path.text = self.local_img_path
+            local_img_path.text = self.local_vid_path
 
         source = SubElement(top, 'source')
         database = SubElement(source, 'database')
@@ -79,11 +78,11 @@ class PascalVocWriter:
         for frame in frame_object:
             box = frame[0]
             bnd_box = {'xmin': box[0], 'ymin': box[1], 'xmax': box[2], 'ymax': box[3], 'name': frame[1],
-                       'frame': frame[2]}
+                       'frame': frame[2], 'verified': frame[3]}
             frame_array.append(bnd_box)
         self.box_list.append(frame_array)
 
-    def append_objects(self, top):
+    def append_objects(self, top, verified=False):
         start_frame = SubElement(top, 'startframe')
         end_frame = SubElement(top, 'endframe')
         main_annotations = SubElement(top, 'frames')
@@ -91,6 +90,8 @@ class PascalVocWriter:
         end_frame.text = str(self.box_list[-1][-1]['frame'])
         for frame_array in self.box_list:
             frame_object = SubElement(main_annotations, 'frame')
+            if frame_array[0]['verified']:
+                frame_object.attrib['verified'] = 'yes'
             frame_number = SubElement(frame_object, "framenumber")
             frame_number.text = str(frame_array[0]['frame'])
             for each_object in frame_array:
@@ -116,6 +117,25 @@ class PascalVocWriter:
                 y_max = SubElement(bnd_box, 'ymax')
                 y_max.text = str(each_object['ymax'])
 
+    @staticmethod
+    def toggle_verify(frame, filename):
+        assert filename.endswith(XML_EXT), "Unsupported file format"
+        parser = etree.XMLParser(encoding=ENCODE_METHOD)
+        et = ElementTree.parse(filename, parser=parser)
+        xml_tree = et.getroot()
+        for node in xml_tree.findall('.//framenumber'):
+            if int(node.text) == frame:
+                parent_tag = node.find('..')
+                try:
+                    verified = parent_tag.attrib['verified']
+                    if verified == 'yes':
+                        del parent_tag.attrib['verified']
+                except KeyError:
+                    parent_tag.attrib['verified'] = 'yes'
+                    pass
+                break
+        et.write(filename)
+
     def save(self, target_file=None):
         root = self.gen_xml()
         self.append_objects(root)
@@ -133,7 +153,7 @@ class PascalVocWriter:
 
 class PascalVocReader:
 
-    def __init__(self, file_path):
+    def __init__(self, file_path, frame=None):
         self.annotations = {}
         self.file_path = file_path
         self.verified = False
@@ -159,22 +179,25 @@ class PascalVocReader:
         assert self.file_path.endswith(XML_EXT), "Unsupported file format"
         parser = etree.XMLParser(encoding=ENCODE_METHOD)
         xml_tree = ElementTree.parse(self.file_path, parser=parser).getroot()
-        filename = xml_tree.find('filename').text
-        try:
-            verified = xml_tree.attrib['verified']
-            if verified == 'yes':
-                self.verified = True
-        except KeyError:
-            self.verified = False
         self.annotations = {}
         frames = xml_tree.find('frames')
         for object_iter in frames.iter('frame'):
             frame_number = int(object_iter.find('framenumber').text)
+            try:
+                verified = object_iter.attrib['verified']
+                if verified == 'yes':
+                    self.verified = True
+            except KeyError:
+                self.verified = False
+                pass
             annotations = []
             for annotation_iter in object_iter.iter('annotation'):
                 bnd_box = annotation_iter.find('bndbox')
                 bnd_box = self.convert_points_to_cv2_bnd_box(bnd_box)
                 label = annotation_iter.find('name').text
-                annotations.append([label, bnd_box])
+                annotations.append([label, bnd_box, self.verified])
             self.annotations[frame_number] = annotations
         return True
+
+
+
