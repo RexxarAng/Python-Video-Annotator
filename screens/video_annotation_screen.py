@@ -116,10 +116,6 @@ class VideoAnnotator(MDGridLayout):
             md_bg_color=(0.241, 0.253, 0.273, 1)
         )
         self.label_scroll_view.add_widget(self.label_list)
-
-
-
-
         self.annotation_canvas.subscribe_event(self.on_annotation_canvas_event)
 
     def on_annotation_canvas_event(self, event):

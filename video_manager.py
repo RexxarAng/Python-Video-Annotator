@@ -2,9 +2,9 @@ import cv2
 from kivy.clock import Clock
 from kivy.graphics.texture import Texture
 import PySimpleGUI as sg
-from labelFile import *
 import os
-from pascal_voc_io import PascalVocReader
+from label.labelFile import LabelFile, LabelFileError
+from label.pascal_voc_io import PascalVocReader
 
 
 class VideoManager:
@@ -49,13 +49,13 @@ class VideoManager:
     def remove_tracker(self, tracker):
         self.trackers.pop(tracker)
 
-    def track(self, img):
+    def get_tracked_img(self, img):
         image_annotations = []
         for tracker, label in self.trackers.items():
             has_frames, bbox = tracker.update(img)
             if has_frames:
                 bbox = LabelFile.convert_cv2_bnd_box_to_points(bbox)
-                annotation = [label, bbox]
+                annotation = [label, bbox, tracker]
                 image_annotations.append(annotation)
         return image_annotations
 
@@ -67,6 +67,7 @@ class VideoManager:
             has_frames, img = self.vid_cap.read()
             #   if annotated start tracking
             if has_frames:
+                # print(self.image_annotations)
                 # self.img = self.rescale_frame(img, percent=50)
                 self.img = self.rescale_frame(img, percent=50)
                 img = self.rescale_frame(img, percent=50)
@@ -81,7 +82,7 @@ class VideoManager:
                         has_frames, bbox = tracker.update(img)
                         if has_frames:
                             self.draw_rectangle(img, label, bbox)
-                            annotation = [label, bbox]
+                            annotation = [label, bbox, False]
                             if self.current_frame in self.image_annotations:
                                 self.image_annotations[self.current_frame].append(annotation)
                             else:
@@ -114,6 +115,8 @@ class VideoManager:
                 #     on_right_arrow(k)
                 # if k == ord('d'):
                 #     self.popup_select()
+                if k == ord('v'):
+                    self.toggle_verify()
                 if k == ord('s'):
                     self.trackers = {}
                     self.save_annotations()
@@ -170,7 +173,7 @@ class VideoManager:
                                    int(border_box[0]):int(border_box[0] + border_box[2])]
                     self.draw_rectangle(self.img, label_object, border_box)
                     cv2.imshow("ROI", selected_box)
-                    current_annotation = [label_object, border_box]
+                    current_annotation = [label_object, border_box, False]
                     if cv2.getTrackbarPos('Frame', self.window_name) in self.image_annotations:
                         self.image_annotations[cv2.getTrackbarPos('Frame', self.window_name)].append(current_annotation)
                     else:
@@ -209,6 +212,16 @@ class VideoManager:
                 self.label_file.verified = False
             self.label_file.save_pascal_voc_format(filename=self.filename, annotations=self.image_annotations, video_path=self.filepath, image_shape=self.img.shape)
 
+        except LabelFileError as e:
+            print("Error!")
+            return False
+
+    def toggle_verify(self, frame=17):
+        try:
+            if self.label_file is None:
+                self.label_file = LabelFile()
+            self.label_file.toggle_verify(filename=self.filename, frame=frame,
+                                          video_path=self.filepath, image_shape=self.img.shape)
         except LabelFileError as e:
             print("Error!")
             return False

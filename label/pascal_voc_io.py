@@ -1,4 +1,3 @@
-import sys
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element, SubElement
 from lxml import etree
@@ -11,14 +10,13 @@ DEFAULT_ENCODING = 'utf-8'
 
 class PascalVocWriter:
 
-    def __init__(self, folder_name, filename, img_size, database_src='Unknown', local_img_path=None):
+    def __init__(self, folder_name, filename, img_size, database_src='Unknown', local_vid_path=None):
         self.folder_name = folder_name
         self.filename = filename
         self.database_src = database_src
         self.img_size = img_size
         self.box_list = []
-        self.local_img_path = local_img_path
-        self.verified = False
+        self.local_vid_path = local_vid_path
 
     def prettify(self, elem):
         """
@@ -43,8 +41,8 @@ class PascalVocWriter:
             return None
 
         top = Element('annotations')
-        if self.verified:
-            top.set('verified', 'yes')
+        # if self.verified:
+        #     top.set('verified', 'yes')
 
         folder = SubElement(top, 'folder')
         folder.text = self.folder_name
@@ -52,9 +50,9 @@ class PascalVocWriter:
         filename = SubElement(top, 'filename')
         filename.text = self.filename
 
-        if self.local_img_path is not None:
+        if self.local_vid_path is not None:
             local_img_path = SubElement(top, 'path')
-            local_img_path.text = self.local_img_path
+            local_img_path.text = self.local_vid_path
 
         source = SubElement(top, 'source')
         database = SubElement(source, 'database')
@@ -75,21 +73,16 @@ class PascalVocWriter:
         segmented.text = '0'
         return top
 
-    def add_bnd_box(self, x_min, y_min, x_max, y_max, name, difficult, frame):
-        bnd_box = {'xmin': x_min, 'ymin': y_min, 'xmax': x_max, 'ymax': y_max, 'frame': frame, 'name': name,
-                   'difficult': difficult}
-        self.box_list.append(bnd_box)
-
     def add_bnd_box_frame(self, frame_object):
         frame_array = []
         for frame in frame_object:
             box = frame[0]
             bnd_box = {'xmin': box[0], 'ymin': box[1], 'xmax': box[2], 'ymax': box[3], 'name': frame[1],
-                       'frame': frame[2]}
+                       'frame': frame[2], 'verified': frame[3]}
             frame_array.append(bnd_box)
         self.box_list.append(frame_array)
 
-    def append_objects(self, top):
+    def append_objects(self, top, verified=False):
         start_frame = SubElement(top, 'startframe')
         end_frame = SubElement(top, 'endframe')
         main_annotations = SubElement(top, 'frames')
@@ -97,6 +90,8 @@ class PascalVocWriter:
         end_frame.text = str(self.box_list[-1][-1]['frame'])
         for frame_array in self.box_list:
             frame_object = SubElement(main_annotations, 'frame')
+            if frame_array[0]['verified']:
+                frame_object.attrib['verified'] = 'yes'
             frame_number = SubElement(frame_object, "framenumber")
             frame_number.text = str(frame_array[0]['frame'])
             for each_object in frame_array:
@@ -106,14 +101,12 @@ class PascalVocWriter:
                 truncated = SubElement(annotation, 'truncated')
                 if int(float(each_object['ymax'])) == int(float(self.img_size[0])) or (
                         int(float(each_object['ymin'])) == 1):
-                    truncated.text = "1"  # max == height or minz
+                    truncated.text = "1"  # max == height or min
                 elif (int(float(each_object['xmax'])) == int(float(self.img_size[1]))) or (
                         int(float(each_object['xmin'])) == 1):
                     truncated.text = "1"  # max == width or min
                 else:
                     truncated.text = "0"
-                # difficult = SubElement(object_item, 'difficult')
-                # difficult.text = str(bool(each_object['difficult']) & 1)
                 bnd_box = SubElement(annotation, 'bndbox')
                 x_min = SubElement(bnd_box, 'xmin')
                 x_min.text = str(each_object['xmin'])
@@ -123,6 +116,25 @@ class PascalVocWriter:
                 x_max.text = str(each_object['xmax'])
                 y_max = SubElement(bnd_box, 'ymax')
                 y_max.text = str(each_object['ymax'])
+
+    @staticmethod
+    def toggle_verify(frame, filename):
+        assert filename.endswith(XML_EXT), "Unsupported file format"
+        parser = etree.XMLParser(encoding=ENCODE_METHOD)
+        et = ElementTree.parse(filename, parser=parser)
+        xml_tree = et.getroot()
+        for node in xml_tree.findall('.//framenumber'):
+            if int(node.text) == frame:
+                parent_tag = node.find('..')
+                try:
+                    verified = parent_tag.attrib['verified']
+                    if verified == 'yes':
+                        del parent_tag.attrib['verified']
+                except KeyError:
+                    parent_tag.attrib['verified'] = 'yes'
+                    pass
+                break
+        et.write(filename)
 
     def save(self, target_file=None):
         root = self.gen_xml()
@@ -141,11 +153,8 @@ class PascalVocWriter:
 
 class PascalVocReader:
 
-    def __init__(self, file_path):
-        # shapes type:
-        # [labbel, [(x1,y1), (x2,y2), (x3,y3), (x4,y4)], color, color, difficult]
+    def __init__(self, file_path, frame=None):
         self.annotations = {}
-        self.shapes = []
         self.file_path = file_path
         self.verified = False
         try:
@@ -153,19 +162,8 @@ class PascalVocReader:
         except:
             pass
 
-    def get_shapes(self):
-        return self.shapes
-
     def get_annotations(self):
         return self.annotations
-
-    def add_shape(self, label, bnd_box, difficult):
-        x_min = int(float(bnd_box.find('xmin').text))
-        y_min = int(float(bnd_box.find('ymin').text))
-        x_max = int(float(bnd_box.find('xmax').text))
-        y_max = int(float(bnd_box.find('ymax').text))
-        points = [(x_min, y_min), (x_max, y_min), (x_max, y_max), (x_min, y_max)]
-        self.shapes.append((label, points, None, None, difficult))
 
     @staticmethod
     def convert_points_to_cv2_bnd_box(bnd_box):
@@ -175,33 +173,31 @@ class PascalVocReader:
         y_max = int(float(bnd_box.find('ymax').text))
         width = int(x_max) - int(x_min)
         height = int(y_max) - int(y_min)
-        return (x_min, y_min, width, height)
+        return x_min, y_min, width, height
 
     def parse_xml(self):
         assert self.file_path.endswith(XML_EXT), "Unsupported file format"
         parser = etree.XMLParser(encoding=ENCODE_METHOD)
         xml_tree = ElementTree.parse(self.file_path, parser=parser).getroot()
-        filename = xml_tree.find('filename').text
-        try:
-            verified = xml_tree.attrib['verified']
-            if verified == 'yes':
-                self.verified = True
-        except KeyError:
-            self.verified = False
         self.annotations = {}
         frames = xml_tree.find('frames')
         for object_iter in frames.iter('frame'):
             frame_number = int(object_iter.find('framenumber').text)
+            try:
+                verified = object_iter.attrib['verified']
+                if verified == 'yes':
+                    self.verified = True
+            except KeyError:
+                self.verified = False
+                pass
             annotations = []
             for annotation_iter in object_iter.iter('annotation'):
                 bnd_box = annotation_iter.find('bndbox')
                 bnd_box = self.convert_points_to_cv2_bnd_box(bnd_box)
                 label = annotation_iter.find('name').text
-                annotations.append([label, bnd_box])
-                # Add chris
-                difficult = False
-                if object_iter.find('difficult') is not None:
-                    difficult = bool(int(object_iter.find('difficult').text))
-                # self.add_shape(label, bnd_box, difficult)
+                annotations.append([label, bnd_box, self.verified])
             self.annotations[frame_number] = annotations
         return True
+
+
+
