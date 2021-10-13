@@ -1,4 +1,5 @@
 from kivy.config import Config
+from kivy.uix.image import Image
 from kivymd.uix.floatlayout import MDFloatLayout
 
 from annotator.annotation_component import BoundingBox, AnnotationGraphic, Corner, IDraggable
@@ -7,7 +8,7 @@ from annotator.annotation_event import *
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 
 
-class AnnotationCanvas(MDFloatLayout):
+class AnnotationCanvas(Image):
     mode = None
     MODE_CREATE_ANNOTATION = 'create_annotation'
     MODE_DRAG_ANNOTATION = 'drag_annotation'

@@ -1,6 +1,7 @@
 from kivy.core.window import Window
 from kivy.graphics import Color
 from kivy.metrics import dp
+from kivy.uix.image import Image
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDIconButton
 from kivymd.uix.gridlayout import MDGridLayout
@@ -9,7 +10,8 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.list import MDList, OneLineListItem
 from kivymd.uix.slider import MDSlider
 from kivymd.icon_definitions import md_icons
-
+from kivy.graphics.texture import Texture
+import cv2
 from annotator.annotation_canvas import (AnnotationCanvas)
 from annotator.annotation_event import *
 
@@ -117,6 +119,22 @@ class VideoAnnotator(MDGridLayout):
         )
         self.label_scroll_view.add_widget(self.label_list)
         self.annotation_canvas.subscribe_event(self.on_annotation_canvas_event)
+
+        self.vid_cap = cv2.VideoCapture('video.mp4')
+        self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, 1)
+        if self.vid_cap.isOpened():
+            has_frames, img = self.vid_cap.read()
+            if has_frames:
+                self.image = img
+                buffer = cv2.flip(img, 0).tostring()
+                print(img.shape)
+                texture = Texture.create(size=(img.shape[1], img.shape[0]), colorfmt='bgr')
+                texture.blit_buffer(buffer, colorfmt='bgr', bufferfmt='ubyte')
+                self.annotation_canvas.texture = texture
+                self.annotation_canvas.size_hint_x = None
+                self.annotation_canvas.size_hint_y = None
+                self.annotation_canvas.width = dp(img.shape[1])
+                self.annotation_canvas.height = dp(img.shape[0])
 
     def on_annotation_canvas_event(self, event):
         # print(event)
