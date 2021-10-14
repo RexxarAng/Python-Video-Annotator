@@ -16,7 +16,7 @@ import cv2
 from enum import Enum
 from annotator.annotation_canvas import (AnnotationCanvas)
 from annotator.annotation_event import *
-
+from annotation_manager import AnnotationFile
 
 class VideoPlayBackMode(Enum):
     Stopped = 1
@@ -30,13 +30,14 @@ class VideoAnnotator(MDGridLayout):
     _selected_label = 'smoking'
 
     annotation_canvas = None
-
+    vid_path = None
     vid_cap = None
     vid_current_frame = 0
     vid_frame_length = 0
     vid_fps = 29
-    annotator_fps = 2
-
+    play_speed = 1
+    annotator_fps = 3
+    img = None
     clock = None
 
     def __init__(self, **kwargs):
@@ -78,7 +79,8 @@ class VideoAnnotator(MDGridLayout):
         self.time_slider = MDSlider(
             color=(.6, .6, .6, 1))
         self.time_slider.hint_radius = 2
-        self.time_slider.bind(on_touch_move=self.on_touch_up_timer_slider)
+        self.time_slider.bind(on_touch_move=self.on_touch_up_timer_slider, on_touch_down=self.on_touch_up_timer_slider)
+        # self.time_slider.bind(value=self.on_touch_up_timer_slider)
         self.time_layout.add_widget(self.time_slider)
 
         self.time_control_layout = MDBoxLayout(
@@ -98,7 +100,8 @@ class VideoAnnotator(MDGridLayout):
             md_bg_color=[.8, .8, .8, 1],
             user_font_size=20
         )
-        self.time_control_play_button.bind(on_touch_down=self.on_mouse_down_play_button)
+        # self.time_control_play_button.bind(on_touch_down=self.on_mouse_down_play_button)
+        self.time_control_play_button.on_press = self.on_mouse_down_play_button
         self.time_control_layout.add_widget(self.time_control_play_button)
         self.time_control_layout.add_widget(MDIconButton(
             icon='skip-forward',
@@ -143,9 +146,8 @@ class VideoAnnotator(MDGridLayout):
         self.label_scroll_view.add_widget(self.label_list)
         self.annotation_canvas.subscribe_event(self.on_annotation_canvas_event)
 
-        self.load_video('video.mp4')
-
     def load_video(self, video_path):
+        self.vid_path = video_path
         self.vid_cap = cv2.VideoCapture(video_path)
         self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, 1)
         self.vid_fps = self.vid_cap.get(cv2.CAP_PROP_FPS)
@@ -154,6 +156,7 @@ class VideoAnnotator(MDGridLayout):
         self.set_vid_frame_length(int(self.vid_cap.get(cv2.CAP_PROP_FRAME_COUNT) - 1))
         if self.vid_cap.isOpened():
             has_frames, img = self.vid_cap.read()
+            self.img = img
             if has_frames:
                 buffer = cv2.flip(img, 0).tostring()
                 print(img.shape)
@@ -170,6 +173,7 @@ class VideoAnnotator(MDGridLayout):
         self.time_slider.max = self.convert_video_frame_to_annotator_frame(video_frame)
 
     def set_vid_current_frame(self, video_frame):
+        print(video_frame)
         self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, video_frame)
         if self.vid_cap.isOpened():
             has_frames, img = self.vid_cap.read()
@@ -185,35 +189,32 @@ class VideoAnnotator(MDGridLayout):
         return False
 
     def play_video(self):
-        if self.clock is not None:
-            Clock.unschedule(self.clock)
-            self.clock = None
-        self.clock = Clock.schedule_interval(self.playing, 1.0 / self.vid_fps)
+        # if self.clock is not None:
+        #     Clock.unschedule(self.clock)
+        #     self.clock = None
+        self.video_playback = VideoPlayBackMode.Playing
+        self.time_control_play_button.icon = 'stop'
+        self.clock = Clock.schedule_interval(self.playing, 1.0 / self.vid_fps / self.play_speed)
 
     def playing(self, *args):
         print('playing')
-        if not self.set_vid_current_frame(self.vid_current_frame + 1):
-            self.toggle_play()
+        if not self.set_vid_current_frame(self.vid_current_frame+1):
+            self.toggle_play()  # To stop playing when video reaches the end
 
     def stop_video(self):
+        self.video_playback = VideoPlayBackMode.Stopped
+        self.time_control_play_button.icon = 'play'
         if self.clock is not None:
             self.clock.release()
             self.clock = None
 
-    def on_mouse_down_play_button(self, widget, touch):
+    def on_mouse_down_play_button(self):
         self.toggle_play()
 
     def toggle_play(self):
         if self.video_playback == VideoPlayBackMode.Stopped:
-            # Playing
-            self.video_playback = VideoPlayBackMode.Playing
-            self.time_control_play_button.icon = 'stop'
-            # Start the Clock!
             self.play_video()
         else:
-            self.video_playback = VideoPlayBackMode.Stopped
-            self.time_control_play_button.icon = 'play'
-            # Stop the Clock!
             self.stop_video()
 
     def convert_video_frame_to_annotator_frame(self, value: int):
@@ -222,7 +223,18 @@ class VideoAnnotator(MDGridLayout):
     def convert_video_frame_from_annotator_frame(self, value):
         return int(value * self.vid_fps / self.annotator_fps)
 
-    def on_touch_up_timer_slider(self, widget, touch):
+    def on_touch_up_timer_slider(self, widget, touch, ):
+        print(widget)
+        print(touch)
+        if widget.collide_point(*touch.pos):
+            print('touched1')
+            # Clock.schedule_once(self.on_timer_slider_update, 0.01)
+            print(self.time_slider.value)
+            self.set_vid_current_frame(self.convert_video_frame_from_annotator_frame(self.time_slider.value))
+
+    def on_timer_slider_update(self, widget):
+        print('touched2')
+        self.stop_video()
         self.set_vid_current_frame(self.convert_video_frame_from_annotator_frame(self.time_slider.value))
 
     def on_annotation_canvas_event(self, event):
@@ -259,11 +271,13 @@ class VideoAnnotator(MDGridLayout):
         print(scancode)
         print(codepoint)
         print(modifier)
-
         if 'ctrl' in modifier and codepoint == 'z':
             self.annotation_canvas.remove_annotation_at_index(len(self.annotation_canvas.annotations) - 1)
         elif 'ctrl' in modifier and codepoint == 'a':
-            self.annotation_canvas.set_mode_create_annotation('smoking1')
+            self.annotation_canvas.set_mode_create_annotation('smoking')
+        elif 'ctrl' in modifier and codepoint == 's':
+            annotation_file = AnnotationFile(filepath=self.vid_path, img=self.img)
+            annotation_file.save_annotations(self.annotation_canvas.annotations)
         elif key == 276:
             # Left Arrow
             self.annotation_canvas.move_left()

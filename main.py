@@ -46,7 +46,8 @@ class VideoAnnotatorApp(MDApp):
         return Builder.load_file("main.kv")
 
     def on_start(self):
-        self.open_annotator()
+        # self.open_annotator()
+        pass
 
     def file_manager_open(self):
         self.file_manager.show(os.path.abspath("../"))  # output manager to the screen
@@ -62,7 +63,8 @@ class VideoAnnotatorApp(MDApp):
         self.filepath = path
         self.exit_manager()
         toast(path)
-        self.open_video()
+        # self.open_video()
+        self.open_annotator()
 
     def exit_manager(self, *args):
         """Called when the user reaches the root of the directory tree."""
@@ -86,6 +88,7 @@ class VideoAnnotatorApp(MDApp):
         self.root.ids.nav_drawer.set_state("close")
         self.root.ids.screen_manager.current = "Annotator"
         self.video_annotator = VideoAnnotator()
+        self.video_annotator.load_video(self.filepath)
         print(self.root.ids.annotator_screen)
         # self.root.ids.annotator_screen.remove_all_widgets()
         self.root.ids.annotator_screen.clear_widgets()
