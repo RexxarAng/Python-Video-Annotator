@@ -12,7 +12,7 @@ class AnnotationCanvas(Image):
     mode = None
     MODE_CREATE_ANNOTATION = 'create_annotation'
     MODE_DRAG_ANNOTATION = 'drag_annotation'
-    frame = None
+    frame = 0
     verified = False
     current_label = 'no-label'
     resize_corner: Corner = Corner.Bottom_Right
@@ -75,11 +75,11 @@ class AnnotationCanvas(Image):
                 self.selected_annotation.redraw()
                 self.annotations.append(self.selected_annotation)
                 if self.frame in self.all_annotations:
-                    self.all_annotations[self.frame].append(self.convert_annotation_graphic_to_annotation(self.selected_annotation))
-                    # self.all_annotations[self.frame].append(self.selected_annotation)
+                    # self.all_annotations[self.frame].append(self.convert_annotation_graphic_to_annotation(self.selected_annotation))
+                    self.all_annotations[self.frame].append(self.selected_annotation)
                 else:
-                    self.all_annotations[self.frame] = [self.convert_annotation_graphic_to_annotation(self.selected_annotation)]
-                    # self.all_annotations[self.frame].append(self.selected_annotation)
+                    # self.all_annotations[self.frame] = [self.convert_annotation_graphic_to_annotation(self.selected_annotation)]
+                    self.all_annotations[self.frame] = [self.selected_annotation]
                 self.resize_corner = Corner.Bottom_Right
 
     def on_touch_move(self, touch):
@@ -106,7 +106,6 @@ class AnnotationCanvas(Image):
         if self.selected_annotation:
             self.selected_annotation.reset_min_max()
             self.selected_annotation.redraw()
-
         if self.mode == self.MODE_CREATE_ANNOTATION:
             self.post_event(AnnotationCreatedEvent(annotation=self.selected_annotation))
             self.mode = None
@@ -131,11 +130,19 @@ class AnnotationCanvas(Image):
             return
 
         annotation_to_remove = self.annotations[index]
-        # self.all_annotations[self.frame].remove(self.annotations[index].)
         self.remove_annotation(annotation_to_remove)
 
     def remove_selected_annotation(self):
         if self.selected_annotation:
+            print("trying to remove -----------------------")
+            print(self.selected_annotation)
+            print("current list ---------------------------")
+            print(self.all_annotations[self.frame])
+            if self.selected_annotation in self.all_annotations[self.frame]:
+                self.all_annotations[self.frame].remove(self.selected_annotation)
+                if len(self.all_annotations[self.frame]) == 0:
+                    del self.all_annotations[self.frame]
+
             self.remove_annotation(self.selected_annotation)
 
     def remove_annotation(self, annotation):
@@ -150,20 +157,35 @@ class AnnotationCanvas(Image):
     def remove_all_annotations(self):
         for annotation in self.annotations:
             print('actual removing')
-            print(annotation)
             self.remove_annotation(annotation)
 
     def create_annotation(self, annotation):
         annotation_graphic = AnnotationGraphic(
             parent=self,
-            name=annotation[0],
+            name=annotation.name,
             frame=self.frame,
-            bounding_box=(annotation[1][0], annotation[1][1], annotation[1][2], annotation[1][3]),
+            bounding_box=(annotation.min_x, annotation.min_y, annotation.max_x, annotation.max_y),
             color=(0, 1, 0, 1)
         )
         annotation_graphic.redraw()
         self.post_event(AnnotationCreatedEvent(annotation=annotation_graphic))
         self.annotations.append(annotation_graphic)
+        return annotation_graphic
+
+    def create_annotation_from_file(self, annotations):
+        for frame in annotations:
+            for annotation in annotations[frame]:
+                annotation_graphic = AnnotationGraphic(
+                    parent=self,
+                    name=annotation[0],
+                    frame=self.frame,
+                    bounding_box=(annotation[1][0], annotation[1][1], annotation[1][2], annotation[1][3]),
+                    color=(0, 1, 0, 1)
+                )
+                if frame in self.all_annotations:
+                    self.all_annotations[frame].append(annotation_graphic)
+                else:
+                    self.all_annotations[frame] = [annotation_graphic]
 
     @staticmethod
     def convert_annotation_graphic_to_annotation(annotation):

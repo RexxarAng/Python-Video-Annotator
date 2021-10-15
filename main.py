@@ -94,8 +94,8 @@ class VideoAnnotatorApp(MDApp):
         self.root.ids.annotator_screen.add_widget(self.video_annotator)
 
         if self.filepath:
+            self.video_annotator.clear_all()
             self.video_annotator.load_video(self.filepath)
-            self.video_annotator.annotation_list.clear_widgets()
         self.root.ids.nav_drawer.set_state("close")
         self.root.ids.screen_manager.current = "Annotator"
 

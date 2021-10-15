@@ -171,9 +171,7 @@ class PascalVocReader:
         y_min = int(float(bnd_box.find('ymin').text))
         x_max = int(float(bnd_box.find('xmax').text))
         y_max = int(float(bnd_box.find('ymax').text))
-        width = int(x_max) - int(x_min)
-        height = int(y_max) - int(y_min)
-        return x_min, y_min, width, height
+        return x_min, y_min, x_max, y_max
 
     def parse_xml(self):
         assert self.file_path.endswith(XML_EXT), "Unsupported file format"
