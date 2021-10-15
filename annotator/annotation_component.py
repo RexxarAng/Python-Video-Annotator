@@ -94,6 +94,7 @@ class AnnotationGraphic(BoundingBox, CanvasGraphic, IDraggable, IResizable):
             raise ValueError('parent attribute of (kivy.uix.widget) is required')
 
         self.name = kwargs.get('name', '<no-value>')
+        self.frame = kwargs.get('frame', '<no-value>')
         self.color = kwargs.get('color', (0, 1, 0, 0.8))
 
         super().__init__(**kwargs)

@@ -85,15 +85,19 @@ class VideoAnnotatorApp(MDApp):
         self.video_manager.start()
 
     def open_annotator(self):
-        self.root.ids.nav_drawer.set_state("close")
-        self.root.ids.screen_manager.current = "Annotator"
+        if self.video_annotator:
+            self.video_annotator.stop()
+
         self.video_annotator = VideoAnnotator()
-        self.video_annotator.load_video(self.filepath)
         print(self.root.ids.annotator_screen)
-        # self.root.ids.annotator_screen.remove_all_widgets()
         self.root.ids.annotator_screen.clear_widgets()
         self.root.ids.annotator_screen.add_widget(self.video_annotator)
-        # self.video_annotator.start()
+
+        if self.filepath:
+            self.video_annotator.load_video(self.filepath)
+            self.video_annotator.annotation_list.clear_widgets()
+        self.root.ids.nav_drawer.set_state("close")
+        self.root.ids.screen_manager.current = "Annotator"
 
 
 if __name__ == "__main__":

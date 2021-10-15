@@ -1,6 +1,7 @@
 from label.pascal_voc_io import PascalVocWriter, XML_EXT
 from enum import Enum
 import os.path
+import collections
 
 
 class LabelFileFormat(Enum):
@@ -34,16 +35,18 @@ class LabelFile(object):
         writer = PascalVocWriter(video_folder_name, video_file_name,
                                  image_shape, local_vid_path=video_path)
         writer.verified = self.verified
+        annotations = collections.OrderedDict(sorted(annotations.items()))
         for frame in annotations:
             frame_object = []
             for annotation in annotations[frame]:
                 label = annotation[0]
-                bnd_box = LabelFile.convert_cv2_bnd_box_to_points(annotation[1])
+                bnd_box = annotation[1]
+                # bnd_box = LabelFile.convert_cv2_bnd_box_to_points(annotation[1])
                 verified = annotation[2]
                 frame_object.append([bnd_box, label, frame, verified])
             writer.add_bnd_box_frame(frame_object)
-
-        writer.save(target_file=filename)
+        if annotations:
+            writer.save(target_file=filename)
         return
 
     @staticmethod

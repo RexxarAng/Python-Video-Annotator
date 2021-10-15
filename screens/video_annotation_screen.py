@@ -17,6 +17,8 @@ from enum import Enum
 from annotator.annotation_canvas import (AnnotationCanvas)
 from annotator.annotation_event import *
 from annotation_manager import AnnotationFile
+import os
+
 
 class VideoPlayBackMode(Enum):
     Stopped = 1
@@ -28,7 +30,7 @@ class VideoAnnotator(MDGridLayout):
     FRAME_COUNT = cv2.CAP_PROP_FRAME_COUNT
 
     _selected_label = 'smoking'
-
+    annotation_file = None
     annotation_canvas = None
     vid_path = None
     vid_cap = None
@@ -157,6 +159,11 @@ class VideoAnnotator(MDGridLayout):
         if self.vid_cap.isOpened():
             has_frames, img = self.vid_cap.read()
             self.img = img
+            self.annotation_file = AnnotationFile(filepath=self.vid_path, img=self.img)
+            filename = os.path.splitext(self.vid_path)[0]
+            xml_path = os.path.join(self.vid_path, filename + '.xml')
+            if os.path.isfile(xml_path):
+                self.annotation_canvas.all_annotations = self.annotation_file.load_pascal_xml_by_filename(xml_path)
             if has_frames:
                 buffer = cv2.flip(img, 0).tostring()
                 print(img.shape)
@@ -167,26 +174,31 @@ class VideoAnnotator(MDGridLayout):
                 self.annotation_canvas.size_hint_y = None
                 self.annotation_canvas.width = dp(img.shape[1])
                 self.annotation_canvas.height = dp(img.shape[0])
+                if self.vid_current_frame in self.annotation_canvas.all_annotations:
+                    for annotation in self.annotation_canvas.all_annotations[self.vid_current_frame]:
+                        self.annotation_canvas.create_annotation(annotation)
 
     def set_vid_frame_length(self, video_frame):
         self.vid_frame_length = video_frame
         self.time_slider.max = self.convert_video_frame_to_annotator_frame(video_frame)
 
     def set_vid_current_frame(self, video_frame):
-        print(video_frame)
-        self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, video_frame)
-        if self.vid_cap.isOpened():
-            has_frames, img = self.vid_cap.read()
-            if has_frames:
-                buffer = cv2.flip(img, 0).tostring()
-                print(img.shape)
-                texture = Texture.create(size=(img.shape[1], img.shape[0]), colorfmt='bgr')
-                texture.blit_buffer(buffer, colorfmt='bgr', bufferfmt='ubyte')
-                self.annotation_canvas.texture = texture
-                self.vid_current_frame = video_frame
-                self.time_slider.value = self.convert_video_frame_to_annotator_frame(video_frame)
-                return True
-        return False
+        if self.vid_cap is not None:
+            if self.vid_cap.isOpened():
+                has_frames, img = self.vid_cap.read()
+                if has_frames:
+                    self.annotation_canvas.remove_all_annotations()
+                    buffer = cv2.flip(img, 0).tostring()
+                    texture = Texture.create(size=(img.shape[1], img.shape[0]), colorfmt='bgr')
+                    texture.blit_buffer(buffer, colorfmt='bgr', bufferfmt='ubyte')
+                    self.annotation_canvas.texture = texture
+                    if video_frame in self.annotation_canvas.all_annotations:
+                        for annotation in self.annotation_canvas.all_annotations[video_frame]:
+                            self.annotation_canvas.create_annotation(annotation)
+                    self.vid_current_frame = video_frame
+                    self.time_slider.value = self.convert_video_frame_to_annotator_frame(video_frame)
+                    return True
+            return False
 
     def play_video(self):
         # if self.clock is not None:
@@ -197,7 +209,6 @@ class VideoAnnotator(MDGridLayout):
         self.clock = Clock.schedule_interval(self.playing, 1.0 / self.vid_fps / self.play_speed)
 
     def playing(self, *args):
-        print('playing')
         if not self.set_vid_current_frame(self.vid_current_frame+1):
             self.toggle_play()  # To stop playing when video reaches the end
 
@@ -207,6 +218,12 @@ class VideoAnnotator(MDGridLayout):
         if self.clock is not None:
             self.clock.release()
             self.clock = None
+
+    def stop(self):
+        if self.clock is not None:
+            self.clock.release()
+            self.clock = None
+            self.annotation_canvas.remove_all_annotations()
 
     def on_mouse_down_play_button(self):
         self.toggle_play()
@@ -224,16 +241,16 @@ class VideoAnnotator(MDGridLayout):
         return int(value * self.vid_fps / self.annotator_fps)
 
     def on_touch_up_timer_slider(self, widget, touch, ):
-        print(widget)
-        print(touch)
-        if widget.collide_point(*touch.pos):
-            print('touched1')
-            # Clock.schedule_once(self.on_timer_slider_update, 0.01)
-            print(self.time_slider.value)
-            self.set_vid_current_frame(self.convert_video_frame_from_annotator_frame(self.time_slider.value))
+        if self.vid_cap is not None:
+            if widget.collide_point(*touch.pos):
+                print('touched1')
+                # Clock.schedule_once(self.on_timer_slider_update, 0.01)
+                print(self.time_slider.value)
+                annotation_frame = self.convert_video_frame_from_annotator_frame(self.time_slider.value)
+                self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, annotation_frame)
+                self.set_vid_current_frame(annotation_frame)
 
     def on_timer_slider_update(self, widget):
-        print('touched2')
         self.stop_video()
         self.set_vid_current_frame(self.convert_video_frame_from_annotator_frame(self.time_slider.value))
 
@@ -271,28 +288,28 @@ class VideoAnnotator(MDGridLayout):
         print(scancode)
         print(codepoint)
         print(modifier)
-        if 'ctrl' in modifier and codepoint == 'z':
-            self.annotation_canvas.remove_annotation_at_index(len(self.annotation_canvas.annotations) - 1)
-        elif 'ctrl' in modifier and codepoint == 'a':
-            self.annotation_canvas.set_mode_create_annotation('smoking')
-        elif 'ctrl' in modifier and codepoint == 's':
-            annotation_file = AnnotationFile(filepath=self.vid_path, img=self.img)
-            annotation_file.save_annotations(self.annotation_canvas.annotations)
-        elif key == 276:
-            # Left Arrow
-            self.annotation_canvas.move_left()
-        elif key == 275:
-            # Right Arrow
-            self.annotation_canvas.move_right()
-        elif key == 274:
-            # Down Arrow
-            self.annotation_canvas.move_down()
-        elif key == 273:
-            # Up Arrow
-            self.annotation_canvas.move_up()
-        elif key == 127 or key == 8:
-            # Delete Key
-            self.annotation_canvas.remove_selected_annotation()
+        if self.vid_path:
+            if 'ctrl' in modifier and codepoint == 'z':
+                self.annotation_canvas.remove_annotation_at_index(len(self.annotation_canvas.annotations) - 1)
+            elif 'ctrl' in modifier and codepoint == 'a':
+                self.annotation_canvas.set_mode_create_annotation('smoking', self.vid_current_frame)
+            elif 'ctrl' in modifier and codepoint == 's':
+                self.annotation_file.save_annotations(self.annotation_canvas.all_annotations)
+            elif key == 276:
+                # Left Arrow
+                self.annotation_canvas.move_left()
+            elif key == 275:
+                # Right Arrow
+                self.annotation_canvas.move_right()
+            elif key == 274:
+                # Down Arrow
+                self.annotation_canvas.move_down()
+            elif key == 273:
+                # Up Arrow
+                self.annotation_canvas.move_up()
+            elif key == 127 or key == 8:
+                # Delete Key
+                self.annotation_canvas.remove_selected_annotation()
 
     def __draw_shadow__(self, origin, end, context=None):
         pass

@@ -4,6 +4,7 @@ from label.labelFile import LabelFile, LabelFileError
 from label.pascal_voc_io import PascalVocReader
 from pprint import pprint
 
+
 class AnnotationPrediction:
 
     def __init__(self, **kwargs):
@@ -40,16 +41,22 @@ class AnnotationFile:
 
     def save_annotations(self, annotations):
         print("try saving")
-        image_annotations = {}
-        for i in annotations:
-            bbox = [i.min_x, i.min_y, i.max_x, i.max_y]
-            label = i.name
-
+        # image_annotations = {}
+        # for i in annotations:
+        #     bbox = [i.min_x, i.min_y, i.max_x, i.max_y]
+        #     label = i.name
+        #     verified = False
+        #     annotation = [label, bbox, verified]
+        #     if i.frame in image_annotations:
+        #         image_annotations[i.frame].append(annotation)
+        #     else:
+        #         image_annotations[i.frame] = [annotation]
         try:
             if self.label_file is None:
                 self.label_file = LabelFile()
                 self.label_file.verified = False
-            self.label_file.save_pascal_voc_format(filename=self.filename, annotations=image_annotations, video_path=self.filepath, image_shape=self.img.shape)
+            self.label_file.save_pascal_voc_format(filename=self.filename, annotations=annotations,
+                                                   video_path=self.filepath, image_shape=self.img.shape)
 
         except LabelFileError as e:
             print("Error!")
@@ -62,8 +69,8 @@ class AnnotationFile:
             return
 
         t_voc_parse_reader = PascalVocReader(xml_path)
-        self.image_annotations = t_voc_parse_reader.get_annotations()
-        return self.image_annotations
+        image_annotations = t_voc_parse_reader.get_annotations()
+        return image_annotations
         # shapes = t_voc_parse_reader.get_shapes();
         # self.load_labels(shapes)
         # self.canvas.verified = t_voc_parse_reader.verified
