@@ -13,7 +13,7 @@ class AnnotationCanvas(Image):
     MODE_CREATE_ANNOTATION = 'create_annotation'
     MODE_DRAG_ANNOTATION = 'drag_annotation'
     frame = 0
-    verified = False
+    counter = 60
     current_label = 'no-label'
     resize_corner: Corner = Corner.Bottom_Right
     all_annotations = {}
@@ -59,6 +59,7 @@ class AnnotationCanvas(Image):
                         self.selected_annotation = annotation
                         self.selected_annotation.display_resize_hint(True)
                         self.selected_annotation.change_color((0, 1, 0, 1))
+                        self.selected_annotation.counter = self.counter
                         break
             elif self.mode == self.MODE_CREATE_ANNOTATION:
                 if self.selected_annotation is not None:
@@ -68,6 +69,7 @@ class AnnotationCanvas(Image):
                     parent=self,
                     name=self.current_label,
                     frame=self.frame,
+                    counter=self.counter,
                     bounding_box=(touch.x, touch.y, touch.x, touch.y),
                     color=(0, 1, 0, 1)
                 )
@@ -102,7 +104,6 @@ class AnnotationCanvas(Image):
     def on_touch_up(self, touch):
         print('released mouse', touch)
         print(self.annotations)
-
         if self.selected_annotation:
             self.selected_annotation.reset_min_max()
             self.selected_annotation.redraw()
@@ -112,7 +113,6 @@ class AnnotationCanvas(Image):
         elif self.mode == self.MODE_DRAG_ANNOTATION:
             self.post_event(AnnotationUpdatedEvent(annotation=self.selected_annotation))
             self.mode = None
-
         if self.selected_annotation:
             self.post_event(AnnotationSelectedEvent(annotation=self.selected_annotation))
 
@@ -134,15 +134,10 @@ class AnnotationCanvas(Image):
 
     def remove_selected_annotation(self):
         if self.selected_annotation:
-            print("trying to remove -----------------------")
-            print(self.selected_annotation)
-            print("current list ---------------------------")
-            print(self.all_annotations[self.frame])
             if self.selected_annotation in self.all_annotations[self.frame]:
                 self.all_annotations[self.frame].remove(self.selected_annotation)
                 if len(self.all_annotations[self.frame]) == 0:
                     del self.all_annotations[self.frame]
-
             self.remove_annotation(self.selected_annotation)
 
     def remove_annotation(self, annotation):
@@ -150,7 +145,6 @@ class AnnotationCanvas(Image):
             annotation.remove_graphic()
             self.annotations.remove(annotation)
             self.post_event(AnnotationDeletedEvent(annotation=annotation))
-
             if annotation == self.selected_annotation:
                 self.selected_annotation = None
 
@@ -159,11 +153,13 @@ class AnnotationCanvas(Image):
             print('actual removing')
             self.remove_annotation(annotation)
 
-    def create_annotation(self, annotation):
+    def create_annotation(self, annotation, current_frame):
+        self.frame = current_frame
         annotation_graphic = AnnotationGraphic(
             parent=self,
             name=annotation.name,
             frame=self.frame,
+            counter=annotation.counter,
             bounding_box=(annotation.min_x, annotation.min_y, annotation.max_x, annotation.max_y),
             color=(0, 1, 0, 1)
         )
@@ -179,6 +175,7 @@ class AnnotationCanvas(Image):
                     parent=self,
                     name=annotation[0],
                     frame=self.frame,
+                    counter=self.counter,
                     bounding_box=(annotation[1][0], annotation[1][1], annotation[1][2], annotation[1][3]),
                     color=(0, 1, 0, 1)
                 )

@@ -42,6 +42,7 @@ class VideoAnnotator(MDGridLayout):
     vid_fps = 29
     play_speed = 1
     annotator_fps = 3
+    counter = 60
     img = None
     clock = None
     label = 'Smoking'
@@ -72,7 +73,7 @@ class VideoAnnotator(MDGridLayout):
         self.annotation_canvas = AnnotationCanvas(
             size_hint=(1, .8))
         self.main_layout.add_widget(self.annotation_canvas)
-
+        self.annotation_canvas.counter = self.counter
         # Create Slider
         self.time_layout = MDBoxLayout(
             orientation='vertical',
@@ -185,10 +186,9 @@ class VideoAnnotator(MDGridLayout):
             text='Smoking',
             theme_text_color='Custom',
             text_color='#EEEEEEFF',
-            bg_color=(0, 0, 0, 0),
+            bg_color=(0, 1, 0, .5),
             on_press=self.select_label
         )
-        self.smoking_label.on_press()
         self.label_list.add_widget(self.smoking_label)
         self.label_scroll_view.add_widget(self.label_list)
         self.annotation_canvas.subscribe_event(self.on_annotation_canvas_event)
@@ -298,6 +298,8 @@ class VideoAnnotator(MDGridLayout):
     def on_annotation_canvas_event(self, event):
         # print(event)
         if isinstance(event, AnnotationCreatedEvent):
+            if event.annotation in self.annotation_canvas.annotations:
+                return
             event.annotation.list_item = OneLineListItem(
                 text=event.annotation.name,
                 theme_text_color='Custom',
@@ -305,6 +307,8 @@ class VideoAnnotator(MDGridLayout):
             )
             self.annotation_list.add_widget(event.annotation.list_item)
         elif isinstance(event, AnnotationDeletedEvent):
+            print("removed")
+            print(event.annotation.list_item)
             self.annotation_list.remove_widget(event.annotation.list_item)
         elif isinstance(event, AnnotationSelectedEvent):
             print('divider color')
@@ -366,10 +370,25 @@ class VideoAnnotator(MDGridLayout):
         pass
 
     def check_and_draw_annotation(self):
+        previous_frame = self.vid_current_frame - 1
         if self.vid_current_frame in self.annotation_canvas.all_annotations:
             for annotation in self.annotation_canvas.all_annotations[self.vid_current_frame]:
-                self.annotation_canvas.all_annotations[self.vid_current_frame].append(self.annotation_canvas.create_annotation(annotation))
+                annotation.counter = self.counter
+                self.annotation_canvas.all_annotations[self.vid_current_frame].append(self.annotation_canvas.create_annotation(annotation, self.vid_current_frame))
                 self.annotation_canvas.all_annotations[self.vid_current_frame].remove(annotation)
+        # Check if previous frame is labelled
+        elif previous_frame in self.annotation_canvas.all_annotations:
+            # Iterate through annotations in the frame
+            for annotation in self.annotation_canvas.all_annotations[previous_frame]:
+                # Check if counter for image is 0, stop displaying
+                if annotation.counter > 0:
+                    annotation.counter -= 1
+                    if self.vid_current_frame in self.annotation_canvas.all_annotations:
+                        self.annotation_canvas.all_annotations[self.vid_current_frame].append(self.annotation_canvas.create_annotation(annotation, self.vid_current_frame))
+                    else:
+                        self.annotation_canvas.all_annotations[self.vid_current_frame] = [self.annotation_canvas.create_annotation(annotation, self.vid_current_frame)]
+                    if annotation.counter == 0:
+                        self.stop_video()
 
     def clear_all(self):
         self.annotation_list.clear_widgets()

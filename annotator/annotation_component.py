@@ -96,6 +96,7 @@ class AnnotationGraphic(BoundingBox, CanvasGraphic, IDraggable, IResizable):
         self.name = kwargs.get('name', '<no-value>')
         self.frame = kwargs.get('frame', '<no-value>')
         self.color = kwargs.get('color', (0, 1, 0, 0.8))
+        self.counter = kwargs.get('counter', '<no-value>')
 
         super().__init__(**kwargs)
 
