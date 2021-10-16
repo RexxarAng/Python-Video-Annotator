@@ -232,16 +232,16 @@ class VideoAnnotator(MDGridLayout):
 
         has_frames, img = self.vid_cap.read()
         if has_frames:
-            self.annotation_canvas.remove_all_annotations()
             buffer = cv2.flip(img, 0).tostring()
             texture = Texture.create(size=(img.shape[1], img.shape[0]), colorfmt='bgr')
             texture.blit_buffer(buffer, colorfmt='bgr', bufferfmt='ubyte')
             self.annotation_canvas.texture = texture
             self.vid_current_frame = video_frame
-            self.check_and_draw_annotation()
             has_changed_annotator_frame = abs(self.time_slider.value -
                                               self.convert_video_frame_to_annotator_frame(video_frame)) >= 1
             if has_changed_annotator_frame:
+                print('change frame')
+                self.check_and_draw_annotation()
                 self.time_slider.value = self.convert_video_frame_to_annotator_frame(video_frame)
             return True
         return False
@@ -277,6 +277,9 @@ class VideoAnnotator(MDGridLayout):
             self.play_video()
         else:
             self.stop_video()
+
+    def get_annotation_interval(self):
+        return self.vid_fps / self.annotator_fps
 
     def convert_video_frame_to_annotator_frame(self, value):
         return int(value / self.vid_fps * self.annotator_fps)
@@ -379,12 +382,17 @@ class VideoAnnotator(MDGridLayout):
         pass
 
     def check_and_draw_annotation(self):
-        previous_frame = self.vid_current_frame - 1
-        if self.vid_current_frame in self.annotation_canvas.all_annotations:
-            for annotation in self.annotation_canvas.all_annotations[self.vid_current_frame]:
+        self.annotation_canvas.remove_all_annotations()
+        current_frame = self.vid_current_frame - (self.vid_current_frame % self.get_annotation_interval())
+        previous_frame = current_frame - self.get_annotation_interval()
+
+        # Redraw current frame annotations
+        if current_frame in self.annotation_canvas.all_annotations:
+            for annotation in self.annotation_canvas.all_annotations[current_frame]:
                 annotation.counter = self.counter
-                self.annotation_canvas.all_annotations[self.vid_current_frame].append(self.annotation_canvas.create_annotation(annotation, self.vid_current_frame))
-                self.annotation_canvas.all_annotations[self.vid_current_frame].remove(annotation)
+                self.annotation_canvas.all_annotations[current_frame].append(
+                    self.annotation_canvas.create_annotation(annotation, current_frame))
+                self.annotation_canvas.all_annotations[current_frame].remove(annotation)
         # Check if previous frame is labelled
         elif previous_frame in self.annotation_canvas.all_annotations:
             # Iterate through annotations in the frame
@@ -392,10 +400,12 @@ class VideoAnnotator(MDGridLayout):
                 # Check if counter for image is 0, stop displaying
                 if annotation.counter > 0:
                     annotation.counter -= 1
-                    if self.vid_current_frame in self.annotation_canvas.all_annotations:
-                        self.annotation_canvas.all_annotations[self.vid_current_frame].append(self.annotation_canvas.create_annotation(annotation, self.vid_current_frame))
+                    if current_frame in self.annotation_canvas.all_annotations:
+                        self.annotation_canvas.all_annotations[current_frame].append(
+                            self.annotation_canvas.create_annotation(annotation, current_frame))
                     else:
-                        self.annotation_canvas.all_annotations[self.vid_current_frame] = [self.annotation_canvas.create_annotation(annotation, self.vid_current_frame)]
+                        self.annotation_canvas.all_annotations[current_frame] = [
+                            self.annotation_canvas.create_annotation(annotation, current_frame)]
                     if annotation.counter == 0:
                         self.stop_video()
 

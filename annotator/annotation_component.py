@@ -6,6 +6,7 @@ from kivy.graphics.instructions import Canvas
 from kivy.core.text import Label as CoreLabel
 from kivy.graphics.vertex_instructions import (Line, Rectangle)
 from kivy.graphics.context_instructions import Color
+from nanoid import generate
 
 
 class Corner(Enum):
