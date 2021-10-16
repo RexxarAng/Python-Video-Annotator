@@ -227,8 +227,6 @@ class VideoAnnotator(MDGridLayout):
         self.time_slider.max = self.convert_video_frame_to_annotator_frame(video_frame)
 
     def set_vid_current_frame(self, video_frame):
-        print('set_vid_current_frame ', video_frame)
-        print('self.vid_current_frame ', self.vid_current_frame)
         if self.vid_cap is None or not self.vid_cap.isOpened():
             return False
 
@@ -240,7 +238,6 @@ class VideoAnnotator(MDGridLayout):
             texture.blit_buffer(buffer, colorfmt='bgr', bufferfmt='ubyte')
             self.annotation_canvas.texture = texture
             self.vid_current_frame = video_frame
-            print('self.vid_current_frame ', self.vid_current_frame)
             self.check_and_draw_annotation()
             has_changed_annotator_frame = abs(self.time_slider.value -
                                               self.convert_video_frame_to_annotator_frame(video_frame)) >= 1
@@ -285,10 +282,6 @@ class VideoAnnotator(MDGridLayout):
         return int(value / self.vid_fps * self.annotator_fps)
 
     def convert_video_frame_from_annotator_frame(self, value):
-        print('convert_video_frame_from_annotator_frame')
-        print('value', value)
-        print('self.vid_fps', self.vid_fps)
-        print('self.annotator_fps', self.annotator_fps)
         return int(value * self.vid_fps / self.annotator_fps)
 
     def on_touch_up_timer_slider(self, widget, touch):
