@@ -2,23 +2,26 @@ from kivy.config import Config
 from kivy.uix.image import Image
 from kivymd.uix.floatlayout import MDFloatLayout
 from pprint import pprint
-from annotator.annotation_component import BoundingBox, AnnotationGraphic, Corner, IDraggable
+from annotator.annotation_component import BoundingBox, AnnotationGraphic, Corner, IDraggable, IResizable
 from annotator.annotation_event import *
 
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 
 
 class AnnotationCanvas(Image):
+
     mode = None
     MODE_CREATE_ANNOTATION = 'create_annotation'
+    MODE_RESIZE_ANNOTATION = 'resize_annotation'
     MODE_DRAG_ANNOTATION = 'drag_annotation'
+
     frame = 0
     counter = 60
     current_label = 'no-label'
     resize_corner: Corner = Corner.Bottom_Right
     all_annotations = {}
     annotations = []
-    selected_annotation = None
+    selected_annotation: AnnotationGraphic = None
     initial_mouse_down_pos = None
     previous_mouse_pos = None
 
@@ -41,18 +44,19 @@ class AnnotationCanvas(Image):
     def on_touch_down(self, touch):
         print(touch)
         self.initial_mouse_down_pos = (touch.x, touch.y)
+
         with self.canvas:
             if self.mode is None:
                 if self.selected_annotation:
                     _resize_corner = self.selected_annotation.check_hit_resize_corner(touch.x, touch.y)
                     if _resize_corner:
-                        self.mode = self.MODE_CREATE_ANNOTATION
+                        self.mode = self.MODE_RESIZE_ANNOTATION
                         self.resize_corner = _resize_corner
                         return
                 for annotation in self.annotations:
-                    if (isinstance(annotation, IDraggable) and annotation.can_drag()
-                            and isinstance(annotation, BoundingBox) and annotation.hit(touch.x, touch.y)):
+                    if annotation.can_drag() and annotation.hit(touch.x, touch.y):
                         if self.selected_annotation is not None:
+                            # Unselect current selected annotation
                             self.selected_annotation.display_resize_hint(False)
                             self.selected_annotation.change_color((0, 1, 0, 0.7))
                         self.mode = self.MODE_DRAG_ANNOTATION
@@ -61,6 +65,7 @@ class AnnotationCanvas(Image):
                         self.selected_annotation.change_color((0, 1, 0, 1))
                         self.selected_annotation.counter = self.counter
                         break
+
             elif self.mode == self.MODE_CREATE_ANNOTATION:
                 if self.selected_annotation is not None:
                     self.selected_annotation.display_resize_hint(False)
@@ -86,18 +91,18 @@ class AnnotationCanvas(Image):
 
     def on_touch_move(self, touch):
         with self.canvas:
-            if self.mode == self.MODE_CREATE_ANNOTATION and self.selected_annotation:
-                self.selected_annotation.resize_corner(self.resize_corner, touch.x, touch.y)
-                self.selected_annotation.redraw()
-            elif self.mode == self.MODE_DRAG_ANNOTATION and self.selected_annotation:
-                if self.previous_mouse_pos:
-                    _previous_mouse_pos = self.previous_mouse_pos
-                else:
-                    _previous_mouse_pos = self.initial_mouse_down_pos
-                delta_x = -(_previous_mouse_pos[0] - touch.x)
-                delta_y = -(_previous_mouse_pos[1] - touch.y)
+            if self.selected_annotation:
+                if self.mode == self.MODE_CREATE_ANNOTATION or self.mode == self.MODE_RESIZE_ANNOTATION:
+                    self.selected_annotation.resize_corner(self.resize_corner, touch.x, touch.y)
+                    self.selected_annotation.redraw()
 
-                self.selected_annotation.drag_delta(delta_x, delta_y)
+                elif self.mode == self.MODE_DRAG_ANNOTATION:
+                    _previous_mouse_pos = self.previous_mouse_pos
+                    if _previous_mouse_pos is None:
+                        _previous_mouse_pos = self.initial_mouse_down_pos
+
+                    delta_x, delta_y = -(_previous_mouse_pos[0] - touch.x), -(_previous_mouse_pos[1] - touch.y)
+                    self.selected_annotation.drag_delta(delta_x, delta_y)
 
         self.previous_mouse_pos = (touch.x, touch.y)
 
@@ -110,7 +115,7 @@ class AnnotationCanvas(Image):
         if self.mode == self.MODE_CREATE_ANNOTATION:
             self.post_event(AnnotationCreatedEvent(annotation=self.selected_annotation))
             self.mode = None
-        elif self.mode == self.MODE_DRAG_ANNOTATION:
+        elif self.mode == self.MODE_DRAG_ANNOTATION or self.mode == self.MODE_RESIZE_ANNOTATION:
             self.post_event(AnnotationUpdatedEvent(annotation=self.selected_annotation))
             self.mode = None
         if self.selected_annotation:

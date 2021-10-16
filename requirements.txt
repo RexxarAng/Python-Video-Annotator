@@ -4,3 +4,4 @@ opencv-contrib-python
 pysimplegui~=4.49.0
 pascal-voc-writer
 lxml~=4.6.3
+nanoid==2.0.0

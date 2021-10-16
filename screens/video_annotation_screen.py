@@ -41,8 +41,8 @@ class VideoAnnotator(MDGridLayout):
     vid_frame_length = 0
     vid_fps = 29
     play_speed = 1
-    annotator_fps = 3
-    counter = 60
+    annotator_fps = 5  # video fps must be divisible by this
+    counter = 10
     img = None
     clock = None
     label = 'Smoking'
@@ -129,7 +129,7 @@ class VideoAnnotator(MDGridLayout):
             md_bg_color=[.8, .8, .8, 1],
             user_font_size=20
         )
-        self.time_control_go_back_button.on_press = self.on_left_arrow
+        self.time_control_go_back_button.on_press = self.on_press_back_button
         self.time_control_layout.add_widget(self.time_control_go_back_button)
         self.time_control_play_button = MDIconButton(
             icon='play',
@@ -143,7 +143,7 @@ class VideoAnnotator(MDGridLayout):
             md_bg_color=[.8, .8, .8, 1],
             user_font_size=20
         )
-        self.time_control_go_next_button.on_press = self.on_right_arrow
+        self.time_control_go_next_button.on_press = self.on_press_next_button
         # self.time_control_play_button.bind(on_touch_down=self.on_mouse_down_play_button)
         self.time_control_layout.add_widget(self.time_control_play_button)
         self.time_control_layout.add_widget(self.time_control_go_next_button)
@@ -227,21 +227,27 @@ class VideoAnnotator(MDGridLayout):
         self.time_slider.max = self.convert_video_frame_to_annotator_frame(video_frame)
 
     def set_vid_current_frame(self, video_frame):
-        if self.vid_cap is not None:
-            if self.vid_cap.isOpened():
-                has_frames, img = self.vid_cap.read()
-                if has_frames:
-                    self.annotation_canvas.remove_all_annotations()
-                    buffer = cv2.flip(img, 0).tostring()
-                    texture = Texture.create(size=(img.shape[1], img.shape[0]), colorfmt='bgr')
-                    texture.blit_buffer(buffer, colorfmt='bgr', bufferfmt='ubyte')
-                    self.annotation_canvas.texture = texture
-                    self.vid_current_frame = video_frame
-                    self.check_and_draw_annotation()
-                    if self.time_slider.value+1 == self.convert_video_frame_to_annotator_frame(video_frame):
-                        self.time_slider.value = self.convert_video_frame_to_annotator_frame(video_frame)
-                    return True
+        print('set_vid_current_frame ', video_frame)
+        print('self.vid_current_frame ', self.vid_current_frame)
+        if self.vid_cap is None or not self.vid_cap.isOpened():
             return False
+
+        has_frames, img = self.vid_cap.read()
+        if has_frames:
+            self.annotation_canvas.remove_all_annotations()
+            buffer = cv2.flip(img, 0).tostring()
+            texture = Texture.create(size=(img.shape[1], img.shape[0]), colorfmt='bgr')
+            texture.blit_buffer(buffer, colorfmt='bgr', bufferfmt='ubyte')
+            self.annotation_canvas.texture = texture
+            self.vid_current_frame = video_frame
+            print('self.vid_current_frame ', self.vid_current_frame)
+            self.check_and_draw_annotation()
+            has_changed_annotator_frame = abs(self.time_slider.value -
+                                              self.convert_video_frame_to_annotator_frame(video_frame)) >= 1
+            if has_changed_annotator_frame:
+                self.time_slider.value = self.convert_video_frame_to_annotator_frame(video_frame)
+            return True
+        return False
 
     def play_video(self):
         self.video_playback = VideoPlayBackMode.Playing
@@ -275,10 +281,14 @@ class VideoAnnotator(MDGridLayout):
         else:
             self.stop_video()
 
-    def convert_video_frame_to_annotator_frame(self, value: int):
+    def convert_video_frame_to_annotator_frame(self, value):
         return int(value / self.vid_fps * self.annotator_fps)
 
     def convert_video_frame_from_annotator_frame(self, value):
+        print('convert_video_frame_from_annotator_frame')
+        print('value', value)
+        print('self.vid_fps', self.vid_fps)
+        print('self.annotator_fps', self.annotator_fps)
         return int(value * self.vid_fps / self.annotator_fps)
 
     def on_touch_up_timer_slider(self, widget, touch):
@@ -298,37 +308,43 @@ class VideoAnnotator(MDGridLayout):
     def on_annotation_canvas_event(self, event):
         # print(event)
         if isinstance(event, AnnotationCreatedEvent):
-            if event.annotation in self.annotation_canvas.annotations:
-                return
-            event.annotation.list_item = OneLineListItem(
-                text=event.annotation.name,
-                theme_text_color='Custom',
-                text_color='#EEEEEEFF'
-            )
-            self.annotation_list.add_widget(event.annotation.list_item)
+            # if event.annotation in self.annotation_canvas.annotations:
+            #     return
+            if not hasattr(event.annotation, 'list_item') or not event.annotation.list_item:
+                event.annotation.list_item = OneLineListItem(
+                    text=event.annotation.name,
+                    theme_text_color='Custom',
+                    text_color='#EEEEEEFF'
+                )
+                self.annotation_list.add_widget(event.annotation.list_item)
         elif isinstance(event, AnnotationDeletedEvent):
             print("removed")
-            print(event.annotation.list_item)
-            self.annotation_list.remove_widget(event.annotation.list_item)
+            print(event.annotation)
+            if hasattr(event.annotation, 'list_item'):
+                self.annotation_list.remove_widget(event.annotation.list_item)
         elif isinstance(event, AnnotationSelectedEvent):
             print('divider color')
-            print(event.annotation.list_item.bg_color)
-            for list_item in self.annotation_list.children:
-                if isinstance(list_item, OneLineListItem):
-                    list_item.bg_color = (0, 0, 0, 0)
-            event.annotation.list_item.bg_color = (0, 1, 0, .5)
+            print(event.annotation)
+            if hasattr(event.annotation, 'list_item'):
+                print(event.annotation.list_item.bg_color)
+                for list_item in self.annotation_list.children:
+                    if isinstance(list_item, OneLineListItem):
+                        list_item.bg_color = (0, 0, 0, 0)
+                event.annotation.list_item.bg_color = (0, 1, 0, .5)
 
-    def on_left_arrow(self):
-        if self.vid_current_frame > 0:
-            self.vid_current_frame -= 1
-            self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, self.vid_current_frame)
-            self.set_vid_current_frame(self.vid_current_frame)
+    def on_press_next_button(self):
+        self.move_annotator_frame_by_delta(1)
 
-    def on_right_arrow(self):
-        if self.vid_current_frame < self.vid_frame_length:
-            self.vid_current_frame += 1
-            self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, self.vid_current_frame)
-            self.set_vid_current_frame(self.vid_current_frame)
+    def on_press_back_button(self):
+        self.move_annotator_frame_by_delta(-1)
+
+    def move_annotator_frame_by_delta(self, delta_annotator_frame):
+        annotator_frame = self.convert_video_frame_to_annotator_frame(self.vid_current_frame) + delta_annotator_frame
+        video_frame = self.convert_video_frame_from_annotator_frame(annotator_frame)
+
+        if 0 <= video_frame < self.vid_frame_length:
+            self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, video_frame)
+            self.set_vid_current_frame(video_frame)
 
     def on_keyboard(self, window, key, scancode, codepoint, modifier):
         print(key)
@@ -347,9 +363,9 @@ class VideoAnnotator(MDGridLayout):
                 elif 'ctrl' in modifier and codepoint == 's':
                     self.annotation_file.save_annotations(self.annotation_canvas.all_annotations)
                 elif key == 113:
-                    self.on_left_arrow()
+                    self.on_press_back_button()
                 elif key == 101:
-                    self.on_right_arrow()
+                    self.on_press_next_button()
                 # elif key == 276:
                 #     # Left Arrow
                 #     self.annotation_canvas.move_left()
