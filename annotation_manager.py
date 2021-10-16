@@ -3,13 +3,51 @@ import os
 from label.labelFile import LabelFile, LabelFileError
 from label.pascal_voc_io import PascalVocReader
 from pprint import pprint
+from annotator.annotation_component import BoundingBox
 
 
 class AnnotationPrediction:
+    vid_cap = None
+    bounding_box: BoundingBox
+    start_frame = None
 
     def __init__(self, **kwargs):
         self.tracker = cv2.TrackerCSRT_create()
         self.trackers = {}
+
+    def start(self, context, vid_path: str, bounding_box: BoundingBox, start_frame: int, frame_interval: int):
+        cv2_bounding_box = self.convert_bounding_box_to_cv2_bnd_box(bounding_box)
+        self.start_frame = start_frame
+        self.vid_cap = cv2.VideoCapture(vid_path)
+        self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+        self.create_tracker(cv2_bounding_box)
+        result = self.start_tracking(frame_interval)
+        self.on_complete_prediction(context, result)
+
+    def create_tracker(self, cv2_bounding_box):
+        self.tracker = cv2.TrackerCSRT_create()
+        if self.vid_cap.isOpened():
+            has_frames, img = self.vid_cap.read()
+            if has_frames:
+                self.tracker.init(cv2_bounding_box)
+
+    def start_tracking(self, frame_interval):
+        if self.vid_cap is not None:
+            current_frame = self.start_frame
+            result = {}
+            for frame in range(frame_interval):
+                current_frame += 1
+                self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, current_frame)
+                if self.vid_cap.isOpened():
+                    has_frames, img = self.vid_cap.read()
+                    if has_frames:
+                        has_frames, bounding_box = self.tracker.update(img)
+                        if has_frames:
+                            result[current_frame] = self.convert_cv2_bounding_box_to_bounding_box(bounding_box)
+            return result
+
+    def on_complete_prediction(self, context, result):
+        pass
 
     def add_tracker(self, img, label, borderbox):
         self.tracker = cv2.TrackerCSRT_create()
@@ -28,6 +66,26 @@ class AnnotationPrediction:
                 annotation = [label, bbox, tracker]
                 image_annotations.append(annotation)
         return image_annotations
+
+    def on_complete(self):
+        pass
+
+    @staticmethod
+    def convert_bounding_box_to_cv2_bnd_box(bounding_box: BoundingBox):
+        x_min = bounding_box.min_x
+        y_min = bounding_box.min_y
+        width = bounding_box.max_x - bounding_box.min_x
+        height = bounding_box.max_y - bounding_box.min_y
+        return x_min, y_min, width, height
+
+    @staticmethod
+    def convert_cv2_bounding_box_to_bounding_box(cv2_bounding_box):
+        x_min = cv2_bounding_box[0]
+        y_min = cv2_bounding_box[1]
+        x_max = x_min + cv2_bounding_box[2]
+        y_max = y_min + cv2_bounding_box[3]
+        bounding_box = BoundingBox(bounding_box=(int(x_min), int(y_min), int(x_max), int(y_max)))
+        return bounding_box
 
 
 class AnnotationFile:
