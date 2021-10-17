@@ -17,8 +17,9 @@ from kivymd.uix.textfield import MDTextField
 import cv2
 from enum import Enum
 from annotator.annotation_canvas import (AnnotationCanvas)
+from annotator.annotation_component import BoundingBox
 from annotator.annotation_event import *
-from annotation_manager import AnnotationFile
+from annotation_manager import AnnotationFile, AnnotationPrediction
 import os
 from pprint import pprint
 
@@ -281,6 +282,9 @@ class VideoAnnotator(MDGridLayout):
     def get_annotation_interval(self):
         return self.vid_fps / self.annotator_fps
 
+    def get_current_annotation_frame(self):
+        return self.vid_current_frame - (self.vid_current_frame % self.get_annotation_interval())
+
     def convert_video_frame_to_annotator_frame(self, value):
         return int(value / self.vid_fps * self.annotator_fps)
 
@@ -306,6 +310,7 @@ class VideoAnnotator(MDGridLayout):
         if isinstance(event, AnnotationCreatedEvent):
             # if event.annotation in self.annotation_canvas.annotations:
             #     return
+
             if not hasattr(event.annotation, 'list_item') or not event.annotation.list_item:
                 event.annotation.list_item = OneLineListItem(
                     text=event.annotation.name,
@@ -313,6 +318,23 @@ class VideoAnnotator(MDGridLayout):
                     text_color='#EEEEEEFF'
                 )
                 self.annotation_list.add_widget(event.annotation.list_item)
+
+            print('check event is_interactive')
+            print(event.is_interactive)
+            # Run Prediction
+            if event.is_interactive:
+                print('is_interactive')
+                prediction = AnnotationPrediction()
+                prediction.on_complete_prediction = self.on_complete_prediction
+                prediction.start(
+                    event.annotation,
+                    self.vid_path,
+                    event.annotation,
+                    self.get_current_annotation_frame(),
+                    self.get_annotation_interval(),
+                    50
+                )
+
         elif isinstance(event, AnnotationDeletedEvent):
             print("removed")
             print(event.annotation)
@@ -327,6 +349,15 @@ class VideoAnnotator(MDGridLayout):
                     if isinstance(list_item, OneLineListItem):
                         list_item.bg_color = (0, 0, 0, 0)
                 event.annotation.list_item.bg_color = (0, 1, 0, .5)
+
+    def on_complete_prediction(self, context, result):
+        print('Prediction is completed!!! ------------------------')
+        print(context)
+        print(result)
+        for key, value in result.items():
+            key_frame = self.annotation_canvas.all_annotations.setdefault(key, [])
+            value.name = context.name
+            key_frame.append(value)
 
     def on_press_next_button(self):
         self.move_annotator_frame_by_delta(1)
@@ -393,21 +424,22 @@ class VideoAnnotator(MDGridLayout):
                 self.annotation_canvas.all_annotations[current_frame].append(
                     self.annotation_canvas.create_annotation(annotation, current_frame))
                 self.annotation_canvas.all_annotations[current_frame].remove(annotation)
-        # Check if previous frame is labelled
-        elif previous_frame in self.annotation_canvas.all_annotations:
-            # Iterate through annotations in the frame
-            for annotation in self.annotation_canvas.all_annotations[previous_frame]:
-                # Check if counter for image is 0, stop displaying
-                if annotation.counter > 0:
-                    annotation.counter -= 1
-                    if current_frame in self.annotation_canvas.all_annotations:
-                        self.annotation_canvas.all_annotations[current_frame].append(
-                            self.annotation_canvas.create_annotation(annotation, current_frame))
-                    else:
-                        self.annotation_canvas.all_annotations[current_frame] = [
-                            self.annotation_canvas.create_annotation(annotation, current_frame)]
-                    if annotation.counter == 0:
-                        self.stop_video()
+
+        # # Check if previous frame is labelled
+        # elif previous_frame in self.annotation_canvas.all_annotations:
+        #     # Iterate through annotations in the frame
+        #     for annotation in self.annotation_canvas.all_annotations[previous_frame]:
+        #         # Check if counter for image is 0, stop displaying
+        #         if annotation.counter > 0:
+        #             annotation.counter -= 1
+        #             if current_frame in self.annotation_canvas.all_annotations:
+        #                 self.annotation_canvas.all_annotations[current_frame].append(
+        #                     self.annotation_canvas.create_annotation(annotation, current_frame))
+        #             else:
+        #                 self.annotation_canvas.all_annotations[current_frame] = [
+        #                     self.annotation_canvas.create_annotation(annotation, current_frame)]
+        #             if annotation.counter == 0:
+        #                 self.stop_video()
 
     def clear_all(self):
         self.annotation_list.clear_widgets()

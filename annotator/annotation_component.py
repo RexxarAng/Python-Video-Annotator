@@ -50,6 +50,9 @@ class BoundingBox:
 
 class CanvasGraphic(ABC):
 
+    def __init__(self):
+        self.name = None
+
     @abstractmethod
     def change_color(self, color): raise NotImplementedError
 

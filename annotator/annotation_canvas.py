@@ -113,13 +113,13 @@ class AnnotationCanvas(Image):
             self.selected_annotation.reset_min_max()
             self.selected_annotation.redraw()
         if self.mode == self.MODE_CREATE_ANNOTATION:
-            self.post_event(AnnotationCreatedEvent(annotation=self.selected_annotation))
+            self.post_event(AnnotationCreatedEvent(annotation=self.selected_annotation, is_interactive=True))
             self.mode = None
         elif self.mode == self.MODE_DRAG_ANNOTATION or self.mode == self.MODE_RESIZE_ANNOTATION:
-            self.post_event(AnnotationUpdatedEvent(annotation=self.selected_annotation))
+            self.post_event(AnnotationUpdatedEvent(annotation=self.selected_annotation, is_interactive=True))
             self.mode = None
         if self.selected_annotation:
-            self.post_event(AnnotationSelectedEvent(annotation=self.selected_annotation))
+            self.post_event(AnnotationSelectedEvent(annotation=self.selected_annotation, is_interactive=True))
 
         self.initial_mouse_down_pos = None
         self.previous_mouse_pos = None
