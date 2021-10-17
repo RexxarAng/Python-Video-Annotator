@@ -210,6 +210,7 @@ class VideoAnnotator(MDGridLayout):
             xml_path = os.path.join(self.vid_path, filename + '.xml')
             if os.path.isfile(xml_path):
                 # self.annotation_canvas.all_annotations = self.annotation_file.load_pascal_xml_by_filename(xml_path)
+                print(self.annotation_file.load_pascal_xml_by_filename(xml_path))
                 self.annotation_canvas.create_annotation_from_file(self.annotation_file.load_pascal_xml_by_filename(xml_path))
             if has_frames:
                 buffer = cv2.flip(img, 0).tostring()
@@ -311,13 +312,12 @@ class VideoAnnotator(MDGridLayout):
             # if event.annotation in self.annotation_canvas.annotations:
             #     return
 
-            if not hasattr(event.annotation, 'list_item') or not event.annotation.list_item:
-                event.annotation.list_item = OneLineListItem(
-                    text=event.annotation.name,
-                    theme_text_color='Custom',
-                    text_color='#EEEEEEFF'
-                )
-                self.annotation_list.add_widget(event.annotation.list_item)
+            event.annotation.list_item = OneLineListItem(
+                text=event.annotation.name,
+                theme_text_color='Custom',
+                text_color='#EEEEEEFF'
+            )
+            self.annotation_list.add_widget(event.annotation.list_item)
 
             print('check event is_interactive')
             print(event.is_interactive)
@@ -355,9 +355,11 @@ class VideoAnnotator(MDGridLayout):
         print(context)
         print(result)
         for key, value in result.items():
-            key_frame = self.annotation_canvas.all_annotations.setdefault(key, [])
+            key_frame = self.annotation_canvas.all_annotations.setdefault(int(key), [])
             value.name = context.name
+            value.frame = int(key)
             key_frame.append(value)
+        self.play_video()
 
     def on_press_next_button(self):
         self.move_annotator_frame_by_delta(1)

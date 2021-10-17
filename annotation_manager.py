@@ -152,9 +152,9 @@ class AnnotationFile:
                 verified = False
                 annotation = [label, bbox, verified]
                 if i.frame in image_annotations:
-                    image_annotations[i.frame].append(annotation)
+                    image_annotations[int(i.frame)].append(annotation)
                 else:
-                    image_annotations[i.frame] = [annotation]
+                    image_annotations[int(i.frame)] = [annotation]
         try:
             if self.label_file is None:
                 self.label_file = LabelFile()

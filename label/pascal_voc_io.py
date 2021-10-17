@@ -166,7 +166,7 @@ class PascalVocReader:
         return self.annotations
 
     @staticmethod
-    def convert_points_to_cv2_bnd_box(bnd_box):
+    def convert_points_to_bnd_box(bnd_box):
         x_min = int(float(bnd_box.find('xmin').text))
         y_min = int(float(bnd_box.find('ymin').text))
         x_max = int(float(bnd_box.find('xmax').text))
@@ -187,11 +187,10 @@ class PascalVocReader:
                     self.verified = True
             except KeyError:
                 self.verified = False
-                pass
             annotations = []
             for annotation_iter in object_iter.iter('annotation'):
                 bnd_box = annotation_iter.find('bndbox')
-                bnd_box = self.convert_points_to_cv2_bnd_box(bnd_box)
+                bnd_box = self.convert_points_to_bnd_box(bnd_box)
                 label = annotation_iter.find('name').text
                 annotations.append([label, bnd_box, self.verified])
             self.annotations[frame_number] = annotations
