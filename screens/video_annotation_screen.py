@@ -88,7 +88,7 @@ class VideoAnnotator(MDGridLayout):
         self.time_slider = MDSlider(
             color=(.6, .6, .6, 1))
         self.time_slider.hint_radius = 2
-        self.time_slider.bind(on_touch_move=self.on_touch_up_timer_slider, on_touch_down=self.on_touch_up_timer_slider)
+        self.time_slider.bind(on_touch_move=self.on_touch_up_timer_slider, on_touch_up=self.on_touch_up_timer_slider, on_touch_down=self.on_touch_up_timer_slider)
         # self.time_slider.bind(value=self.on_touch_up_timer_slider)
         self.time_layout.add_widget(self.time_slider)
 
@@ -242,7 +242,6 @@ class VideoAnnotator(MDGridLayout):
             has_changed_annotator_frame = abs(self.time_slider.value -
                                               self.convert_video_frame_to_annotator_frame(video_frame)) >= 1
             if has_changed_annotator_frame:
-                print('change frame')
                 self.check_and_draw_annotation()
                 self.time_slider.value = self.convert_video_frame_to_annotator_frame(video_frame)
             return True
@@ -319,11 +318,8 @@ class VideoAnnotator(MDGridLayout):
             )
             self.annotation_list.add_widget(event.annotation.list_item)
 
-            print('check event is_interactive')
-            print(event.is_interactive)
             # Run Prediction
             if event.is_interactive:
-                print('is_interactive')
                 prediction = AnnotationPrediction()
                 prediction.on_complete_prediction = self.on_complete_prediction
                 prediction.start(
@@ -336,10 +332,9 @@ class VideoAnnotator(MDGridLayout):
                 )
 
         elif isinstance(event, AnnotationDeletedEvent):
-            print("removed")
-            print(event.annotation)
             if hasattr(event.annotation, 'list_item'):
                 self.annotation_list.remove_widget(event.annotation.list_item)
+
         elif isinstance(event, AnnotationSelectedEvent):
             print('divider color')
             print(event.annotation)
@@ -354,6 +349,7 @@ class VideoAnnotator(MDGridLayout):
         print('Prediction is completed!!! ------------------------')
         print(context)
         print(result)
+        print(self.annotation_canvas.all_annotations)
         for key, value in result.items():
             key_frame = self.annotation_canvas.all_annotations.setdefault(int(key), [])
             value.name = context.name
@@ -445,8 +441,8 @@ class VideoAnnotator(MDGridLayout):
 
     def clear_all(self):
         self.annotation_list.clear_widgets()
-        self.annotation_canvas.remove_all_annotations()
         self.annotation_canvas.all_annotations = {}
+        self.stop()
 
     def add_label(self):
         close_button = MDFlatButton(text='Close', on_release=self.close_dialog)

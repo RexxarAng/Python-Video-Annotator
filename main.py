@@ -46,7 +46,7 @@ class VideoAnnotatorApp(MDApp):
         return Builder.load_file("main.kv")
 
     def on_start(self):
-        # self.open_annotator()
+        self.open_annotator()
         pass
 
     def file_manager_open(self):
@@ -96,8 +96,11 @@ class VideoAnnotatorApp(MDApp):
         if self.filepath:
             self.video_annotator.clear_all()
             self.video_annotator.load_video(self.filepath)
-        self.root.ids.nav_drawer.set_state("close")
+
         self.root.ids.screen_manager.current = "Annotator"
+        if self.root.ids.nav_drawer.state == "open":
+            self.root.ids.nav_drawer.set_state("close")
+
 
 
 if __name__ == "__main__":
