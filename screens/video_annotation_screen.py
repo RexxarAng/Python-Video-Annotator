@@ -1,8 +1,10 @@
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.graphics import Color
+from kivy.graphics.transformation import Matrix
 from kivy.metrics import dp
 from kivy.uix.image import Image
+from kivy.uix.scatter import Scatter
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDIconButton, MDFlatButton
 from kivymd.uix.gridlayout import MDGridLayout
@@ -21,6 +23,7 @@ from annotator.annotation_component import BoundingBox
 from annotator.annotation_event import *
 from annotation_manager import AnnotationFile, AnnotationPrediction
 import os
+from kivy.uix.scatterlayout import ScatterLayout, ScatterPlaneLayout
 from pprint import pprint
 
 
@@ -71,10 +74,13 @@ class VideoAnnotator(MDGridLayout):
         self.add_widget(self.side_dock)
 
         # Create Annotation Canvas
-        self.annotation_canvas = AnnotationCanvas(
-            size_hint=(1, .8))
-        self.main_layout.add_widget(self.annotation_canvas)
-        self.annotation_canvas.counter = self.counter
+        self.scatter_canvas = ScatterLayout(do_rotation=False, do_scale=False, do_translation=False)
+        self.main_layout.add_widget(self.scatter_canvas)
+        self.annotation_canvas = AnnotationCanvas()
+        self.scatter_canvas.add_widget(self.annotation_canvas)
+        # TODO: Remove this
+        # self.annotation_canvas.counter = self.counter
+
         # Create Slider
         self.time_layout = MDBoxLayout(
             orientation='vertical',
@@ -223,6 +229,9 @@ class VideoAnnotator(MDGridLayout):
                 self.annotation_canvas.width = dp(img.shape[1])
                 self.annotation_canvas.height = dp(img.shape[0])
                 self.check_and_draw_annotation()
+
+                # TODO: To implement scaling on scatter_canvas to follow window size
+                self.scatter_canvas._set_scale(.7)
 
     def set_vid_frame_length(self, video_frame):
         self.vid_frame_length = video_frame
