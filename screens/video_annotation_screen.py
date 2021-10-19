@@ -239,10 +239,14 @@ class VideoAnnotator(MDGridLayout):
                 self.annotation_canvas.size_hint_y = None
                 self.annotation_canvas.width = dp(img.shape[1])
                 self.annotation_canvas.height = dp(img.shape[0])
+                for annotation in self.annotation_canvas.all_annotations:
+                    for i in self.annotation_canvas.all_annotations[annotation]:
+                        print(i.min_x)
+                    break
                 self.check_and_draw_annotation()
 
                 # TODO: To implement scaling on scatter_canvas to follow window size
-                self.scatter_canvas._set_scale(.5)
+                self.scatter_canvas._set_scale(1)
 
     def set_vid_frame_length(self, video_frame):
         self.vid_frame_length = video_frame
@@ -315,11 +319,11 @@ class VideoAnnotator(MDGridLayout):
         if self.vid_cap is not None:
             if widget.collide_point(*touch.pos):
                 print('touched1')
+                self.annotation_canvas.remove_all_annotations()
                 # Clock.schedule_once(self.on_timer_slider_update, 0.01)
                 print(self.time_slider.value)
                 annotation_frame = self.convert_video_frame_from_annotator_frame(self.time_slider.value)
                 self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, annotation_frame)
-                self.check_and_draw_annotation()
                 self.set_vid_current_frame(annotation_frame)
 
     def on_timer_slider_update(self, widget):
@@ -371,12 +375,20 @@ class VideoAnnotator(MDGridLayout):
         print('Prediction is completed!!! ------------------------')
         print(context)
         print(result)
-        print(self.annotation_canvas.all_annotations)
         for key, value in result.items():
             key_frame = self.annotation_canvas.all_annotations.setdefault(int(key), [])
-            value.name = context.name
-            value.frame = int(key)
-            key_frame.append(value)
+            annotation_graphic = AnnotationGraphic(
+                parent=self.annotation_canvas,
+                name=context.name,
+                frame=int(key),
+                counter=self.counter,
+                bounding_box=(value.min_x, value.min_y, value.max_x, value.max_y),
+                color=(0, 1, 0, 1)
+            )
+            key_frame.append(annotation_graphic)
+        print("current all annotations list")
+        print(self.annotation_canvas.all_annotations)
+
         # self.play_video()
 
     def on_press_next_button(self):
@@ -442,9 +454,10 @@ class VideoAnnotator(MDGridLayout):
         if current_frame in self.annotation_canvas.all_annotations:
             for annotation in self.annotation_canvas.all_annotations[current_frame]:
                 annotation.counter = self.counter
-                self.annotation_canvas.all_annotations[current_frame].append(
-                    self.annotation_canvas.create_annotation(annotation, current_frame))
-                self.annotation_canvas.all_annotations[current_frame].remove(annotation)
+                # self.annotation_canvas.all_annotations[current_frame].append(
+                #     self.annotation_canvas.create_annotation(annotation, current_frame))
+                # self.annotation_canvas.all_annotations[current_frame].remove(annotation)
+                self.annotation_canvas.create_annotation(annotation, current_frame)
 
         # # Check if previous frame is labelled
         # elif previous_frame in self.annotation_canvas.all_annotations:

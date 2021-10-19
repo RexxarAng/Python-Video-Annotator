@@ -214,3 +214,7 @@ class AnnotationGraphic(BoundingBox, CanvasGraphic, IDraggable, IResizable):
         self.parent.canvas.remove(self._border_box)
         self.parent.canvas.remove(self._label)
 
+        self._resize_boxes = None
+        self._border_box = None
+        self._label = None
+

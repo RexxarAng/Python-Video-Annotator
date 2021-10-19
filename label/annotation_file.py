@@ -72,12 +72,3 @@ class AnnotationFile:
                                  self.img.shape, local_vid_path=self.filepath)
         xml_file = self.filename + '.xml'
         writer.toggle_verify(frame, xml_file)
-
-    @staticmethod
-    def convert_cv2_bnd_box_to_points(bnd_box):
-        x_min = bnd_box[0]
-        y_min = bnd_box[1]
-        x_max = x_min + bnd_box[2]
-        y_max = y_min + bnd_box[3]
-
-        return int(x_min), int(y_min), int(x_max), int(y_max)

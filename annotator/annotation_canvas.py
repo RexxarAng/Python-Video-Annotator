@@ -160,18 +160,18 @@ class AnnotationCanvas(Image):
 
     def create_annotation(self, annotation, current_frame):
         self.frame = current_frame
-        annotation_graphic = AnnotationGraphic(
-            parent=self,
-            name=annotation.name,
-            frame=self.frame,
-            counter=annotation.counter,
-            bounding_box=(annotation.min_x, annotation.min_y, annotation.max_x, annotation.max_y),
-            color=(0, 1, 0, 1)
-        )
-        annotation_graphic.redraw()
-        self.post_event(AnnotationCreatedEvent(annotation=annotation_graphic))
-        self.annotations.append(annotation_graphic)
-        return annotation_graphic
+        # annotation_graphic = AnnotationGraphic(
+        #     parent=self,
+        #     name=annotation.name,
+        #     frame=self.frame,
+        #     counter=annotation.counter,
+        #     bounding_box=(annotation.min_x, annotation.min_y, annotation.max_x, annotation.max_y),
+        #     color=(0, 1, 0, 1)
+        # )
+        annotation.redraw()
+        self.post_event(AnnotationCreatedEvent(annotation=annotation))
+        self.annotations.append(annotation)
+        # return annotation_graphic
 
     def create_annotation_from_file(self, annotations):
         for frame in annotations:
