@@ -1,10 +1,6 @@
 from kivy.clock import Clock
 from kivy.core.window import Window
-from kivy.graphics import Color
-from kivy.graphics.transformation import Matrix
 from kivy.metrics import dp
-from kivy.uix.image import Image
-from kivy.uix.scatter import Scatter
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDIconButton, MDFlatButton
 from kivymd.uix.gridlayout import MDGridLayout
@@ -12,7 +8,6 @@ from kivy.uix.scrollview import ScrollView
 from kivymd.uix.label import MDLabel
 from kivymd.uix.list import MDList, OneLineListItem
 from kivymd.uix.slider import MDSlider
-from kivymd.icon_definitions import md_icons
 from kivy.graphics.texture import Texture
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.textfield import MDTextField
