@@ -19,12 +19,11 @@ from kivymd.uix.textfield import MDTextField
 import cv2
 from enum import Enum
 from annotator.annotation_canvas import (AnnotationCanvas)
-from annotator.annotation_component import BoundingBox
 from annotator.annotation_event import *
-from annotation_manager import AnnotationFile, AnnotationPrediction
+from label.annotation_file import AnnotationFile
+from object_tracking.annotation_prediction import AnnotationPrediction
 import os
 from kivy.uix.scatterlayout import ScatterLayout, ScatterPlaneLayout
-from pprint import pprint
 
 
 class VideoPlayBackMode(Enum):
@@ -94,7 +93,7 @@ class VideoAnnotator(MDGridLayout):
         self.time_slider = MDSlider(
             color=(.6, .6, .6, 1))
         self.time_slider.hint_radius = 2
-        self.time_slider.bind(on_touch_move=self.on_touch_up_timer_slider, on_touch_up=self.on_touch_up_timer_slider, on_touch_down=self.on_touch_up_timer_slider)
+        self.time_slider.bind(on_touch_move=self.on_touch_up_timer_slider, on_touch_up=self.on_touch_up_timer_slider)
         # self.time_slider.bind(value=self.on_touch_up_timer_slider)
         self.time_layout.add_widget(self.time_slider)
 
@@ -119,6 +118,8 @@ class VideoAnnotator(MDGridLayout):
             user_font_size=20
         )
 
+        self.add_label_button.on_press = self.add_label
+
         self.label_text_field = MDTextField(
             hint_text="Enter a new label",
             required=True,
@@ -127,9 +128,24 @@ class VideoAnnotator(MDGridLayout):
             width=250
         )
 
-        self.add_label_button.on_press = self.add_label
+        self.verify_button = MDIconButton(
+            icon='check',
+            md_bg_color=[.8, .8, .8, 1],
+            user_font_size=20
+        )
 
-        self.bottom_layout.add_widget(self.add_label_button)
+        self.verify_button.on_press = self.verify_frame
+
+        self.bottom_features_layout = MDBoxLayout(
+            size_hint_y=None,
+            height=dp(40),
+            spacing=dp(10),
+            padding=[10, 10, 10, 10]
+        )
+
+        self.bottom_features_layout.add_widget(self.add_label_button)
+        self.bottom_features_layout.add_widget(self.verify_button)
+        self.bottom_layout.add_widget(self.bottom_features_layout)
         self.time_layout.add_widget(self.bottom_layout)
         self.time_control_go_back_button = MDIconButton(
             icon='skip-backward',
@@ -231,7 +247,7 @@ class VideoAnnotator(MDGridLayout):
                 self.check_and_draw_annotation()
 
                 # TODO: To implement scaling on scatter_canvas to follow window size
-                self.scatter_canvas._set_scale(.7)
+                self.scatter_canvas._set_scale(.5)
 
     def set_vid_frame_length(self, video_frame):
         self.vid_frame_length = video_frame
@@ -308,6 +324,7 @@ class VideoAnnotator(MDGridLayout):
                 print(self.time_slider.value)
                 annotation_frame = self.convert_video_frame_from_annotator_frame(self.time_slider.value)
                 self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, annotation_frame)
+                self.check_and_draw_annotation()
                 self.set_vid_current_frame(annotation_frame)
 
     def on_timer_slider_update(self, widget):
@@ -319,26 +336,27 @@ class VideoAnnotator(MDGridLayout):
         if isinstance(event, AnnotationCreatedEvent):
             # if event.annotation in self.annotation_canvas.annotations:
             #     return
-
-            event.annotation.list_item = OneLineListItem(
-                text=event.annotation.name,
-                theme_text_color='Custom',
-                text_color='#EEEEEEFF'
-            )
-            self.annotation_list.add_widget(event.annotation.list_item)
-
-            # Run Prediction
-            if event.is_interactive:
-                prediction = AnnotationPrediction()
-                prediction.on_complete_prediction = self.on_complete_prediction
-                prediction.start(
-                    event.annotation,
-                    self.vid_path,
-                    event.annotation,
-                    self.get_current_annotation_frame(),
-                    self.get_annotation_interval(),
-                    50
+            print(" ")
+            if hasattr(event.annotation, 'name'):
+                event.annotation.list_item = OneLineListItem(
+                    text=event.annotation.name,
+                    theme_text_color='Custom',
+                    text_color='#EEEEEEFF'
                 )
+                self.annotation_list.add_widget(event.annotation.list_item)
+
+                # Run Prediction
+                if event.is_interactive:
+                    prediction = AnnotationPrediction()
+                    prediction.on_complete_prediction = self.on_complete_prediction
+                    prediction.start(
+                        event.annotation,
+                        self.vid_path,
+                        event.annotation,
+                        self.get_current_annotation_frame(),
+                        self.get_annotation_interval(),
+                        50
+                    )
 
         elif isinstance(event, AnnotationDeletedEvent):
             if hasattr(event.annotation, 'list_item'):
@@ -364,7 +382,7 @@ class VideoAnnotator(MDGridLayout):
             value.name = context.name
             value.frame = int(key)
             key_frame.append(value)
-        self.play_video()
+        # self.play_video()
 
     def on_press_next_button(self):
         self.move_annotator_frame_by_delta(1)
@@ -420,6 +438,7 @@ class VideoAnnotator(MDGridLayout):
         pass
 
     def check_and_draw_annotation(self):
+        self.annotation_list.clear_widgets()
         self.annotation_canvas.remove_all_annotations()
         current_frame = self.vid_current_frame - (self.vid_current_frame % self.get_annotation_interval())
         previous_frame = current_frame - self.get_annotation_interval()
@@ -484,4 +503,10 @@ class VideoAnnotator(MDGridLayout):
             if isinstance(list_item, OneLineListItem):
                 list_item.bg_color = (0, 0, 0, 0)
             obj.bg_color = (0, 1, 0, .5)
+
+    def verify_frame(self):
+        if self.annotation_file is not None and self.vid_current_frame in self.annotation_canvas.all_annotations:
+            self.annotation_file.toggle_verify(self.vid_current_frame)
+        pass
+
 

@@ -2,7 +2,7 @@ from xml.etree import ElementTree
 from xml.etree.ElementTree import Element, SubElement
 from lxml import etree
 import codecs
-
+import os
 XML_EXT = '.xml'
 ENCODE_METHOD = 'utf-8'
 DEFAULT_ENCODING = 'utf-8'
@@ -13,6 +13,7 @@ class PascalVocWriter:
     def __init__(self, folder_name, filename, img_size, database_src='Unknown', local_vid_path=None):
         self.folder_name = folder_name
         self.filename = filename
+        self.xml_filename = os.path.splitext(self.filename)[0]+'.xml'
         self.database_src = database_src
         self.img_size = img_size
         self.box_list = []

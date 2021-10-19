@@ -3,7 +3,7 @@ from kivy.clock import Clock
 from kivy.graphics.texture import Texture
 import PySimpleGUI as sg
 import os
-from label.labelFile import LabelFile, LabelFileError
+from testing.labelFile import LabelFile, LabelFileError
 from label.pascal_voc_io import PascalVocReader
 
 

@@ -155,6 +155,7 @@ class AnnotationCanvas(Image):
 
     def remove_all_annotations(self):
         for annotation in self.annotations:
+            print('Clearing annotations')
             self.remove_annotation(annotation)
 
     def create_annotation(self, annotation, current_frame):

@@ -1,10 +1,10 @@
 from threading import Thread
 import cv2
 import os
-from label.labelFile import LabelFile, LabelFileError
-from label.pascal_voc_io import PascalVocReader
-from pprint import pprint
+from testing.labelFile import LabelFileError
 from annotator.annotation_component import BoundingBox
+from label.pascal_voc_io import PascalVocWriter, PascalVocReader
+import collections
 
 
 class AnnotationPrediction:
@@ -156,11 +156,26 @@ class AnnotationFile:
                 else:
                     image_annotations[int(i.frame)] = [annotation]
         try:
-            if self.label_file is None:
-                self.label_file = LabelFile()
-                self.label_file.verified = False
-            self.label_file.save_pascal_voc_format(filename=self.filename, annotations=image_annotations,
-                                                   video_path=self.filepath, image_shape=self.img.shape)
+            filename = self.filename + ".xml"
+            video_folder_path = os.path.dirname(self.filepath)
+            video_folder_name = os.path.split(video_folder_path)[-1]
+            video_file_name = os.path.basename(self.filepath)
+            writer = PascalVocWriter(video_folder_name, video_file_name,
+                                     self.img.shape, local_vid_path=self.filepath)
+            image_annotations = collections.OrderedDict(sorted(image_annotations.items()))
+            for frame in image_annotations:
+                frame_object = []
+                for annotation in image_annotations[frame]:
+                    label = annotation[0]
+                    bnd_box = annotation[1]
+                    verified = annotation[2]
+                    frame_object.append([bnd_box, label, frame, verified])
+                writer.add_bnd_box_frame(frame_object)
+            if annotations:
+                writer.save(target_file=filename)
+
+            # self.label_file.save_pascal_voc_format(filename=self.filename, annotations=image_annotations,
+            #                                        video_path=self.filepath, image_shape=self.img.shape)
 
         except LabelFileError as e:
             print("Error!")
@@ -178,3 +193,22 @@ class AnnotationFile:
         # shapes = t_voc_parse_reader.get_shapes();
         # self.load_labels(shapes)
         # self.canvas.verified = t_voc_parse_reader.verified
+
+    def toggle_verify(self, frame):
+        video_folder_path = os.path.dirname(self.filepath)
+        video_folder_name = os.path.split(video_folder_path)[-1]
+        video_file_name = os.path.basename(self.filepath)
+
+        writer = PascalVocWriter(video_folder_name, video_file_name,
+                                 self.img.shape, local_vid_path=self.filepath)
+        xml_file = self.filename + '.xml'
+        writer.toggle_verify(frame, xml_file)
+
+    @staticmethod
+    def convert_cv2_bnd_box_to_points(bnd_box):
+        x_min = bnd_box[0]
+        y_min = bnd_box[1]
+        x_max = x_min + bnd_box[2]
+        y_max = y_min + bnd_box[3]
+
+        return int(x_min), int(y_min), int(x_max), int(y_max)

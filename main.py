@@ -6,9 +6,8 @@ from kivy.core.window import Window
 from kivymd.uix.filemanager import MDFileManager
 from kivymd.toast import toast
 import os
-from video_manager import VideoManager
+from testing.video_manager import VideoManager
 from screens.video_annotation_screen import VideoAnnotator
-from kivy.uix.screenmanager import ScreenManager, Screen
 
 
 class NavigationLayout:
@@ -100,7 +99,6 @@ class VideoAnnotatorApp(MDApp):
         self.root.ids.screen_manager.current = "Annotator"
         if self.root.ids.nav_drawer.state == "open":
             self.root.ids.nav_drawer.set_state("close")
-
 
 
 if __name__ == "__main__":

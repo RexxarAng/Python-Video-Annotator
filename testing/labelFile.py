@@ -4,12 +4,6 @@ import os.path
 import collections
 
 
-class LabelFileFormat(Enum):
-    PASCAL_VOC = 1
-    YOLO = 2
-    CREATE_ML = 3
-
-
 class LabelFileError(Exception):
     pass
 
@@ -25,6 +19,7 @@ class LabelFile(object):
         self.video_path = None
         self.image_data = None
         self.verified = False
+        self.xml_file_path = None
 
     def save_pascal_voc_format(self, filename, annotations, video_path, image_shape, line_color=None, fill_color=None,
                                database_src=None):
