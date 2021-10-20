@@ -16,7 +16,7 @@ class AnnotationCanvas(Image):
     MODE_DRAG_ANNOTATION = 'drag_annotation'
 
     frame = 0
-    counter = 60
+    counter = 20
     current_label = 'no-label'
     resize_corner: Corner = Corner.Bottom_Right
     all_annotations = {}
@@ -82,10 +82,8 @@ class AnnotationCanvas(Image):
                 self.selected_annotation.redraw()
                 self.annotations.append(self.selected_annotation)
                 if self.frame in self.all_annotations:
-                    # self.all_annotations[self.frame].append(self.convert_annotation_graphic_to_annotation(self.selected_annotation))
                     self.all_annotations[self.frame].append(self.selected_annotation)
                 else:
-                    # self.all_annotations[self.frame] = [self.convert_annotation_graphic_to_annotation(self.selected_annotation)]
                     self.all_annotations[self.frame] = [self.selected_annotation]
                 self.resize_corner = Corner.Bottom_Right
 
@@ -158,7 +156,7 @@ class AnnotationCanvas(Image):
             print('Clearing annotations')
             self.remove_annotation(annotation)
 
-    def create_annotation(self, annotation, current_frame):
+    def create_annotation_graphics(self, annotation, current_frame):
         self.frame = current_frame
         # annotation_graphic = AnnotationGraphic(
         #     parent=self,
@@ -171,7 +169,22 @@ class AnnotationCanvas(Image):
         annotation.redraw()
         self.post_event(AnnotationCreatedEvent(annotation=annotation))
         self.annotations.append(annotation)
-        # return annotation_graphic
+        return annotation
+
+    def create_annotation(self, annotation, current_frame):
+        self.frame = current_frame
+        annotation_graphic = AnnotationGraphic(
+            parent=self,
+            name=annotation.name,
+            frame=self.frame,
+            counter=annotation.counter,
+            bounding_box=(annotation.min_x, annotation.min_y, annotation.max_x, annotation.max_y),
+            color=(0, 1, 0, 1)
+        )
+        annotation_graphic.redraw()
+        self.post_event(AnnotationCreatedEvent(annotation=annotation_graphic))
+        self.annotations.append(annotation_graphic)
+        return annotation_graphic
 
     def create_annotation_from_file(self, annotations):
         for frame in annotations:
@@ -180,7 +193,7 @@ class AnnotationCanvas(Image):
                     parent=self,
                     name=annotation[0],
                     frame=self.frame,
-                    counter=self.counter,
+                    counter=0,
                     bounding_box=(annotation[1][0], annotation[1][1], annotation[1][2], annotation[1][3]),
                     color=(0, 1, 0, 1)
                 )

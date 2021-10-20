@@ -19,6 +19,9 @@ from label.annotation_file import AnnotationFile
 from object_tracking.annotation_prediction import AnnotationPrediction
 import os
 from kivy.uix.scatterlayout import ScatterLayout, ScatterPlaneLayout
+import gc
+import tracemalloc
+import linecache
 
 
 class VideoPlayBackMode(Enum):
@@ -45,6 +48,7 @@ class VideoAnnotator(MDGridLayout):
     clock = None
     label = 'Smoking'
     dialog = None
+    object_tracking_mode = True
 
     def __init__(self, **kwargs):
         kwargs['cols'] = 2
@@ -73,7 +77,7 @@ class VideoAnnotator(MDGridLayout):
         self.annotation_canvas = AnnotationCanvas()
         self.scatter_canvas.add_widget(self.annotation_canvas)
         # TODO: Remove this
-        # self.annotation_canvas.counter = self.counter
+        self.annotation_canvas.counter = self.counter
 
         # Create Slider
         self.time_layout = MDBoxLayout(
@@ -212,17 +216,19 @@ class VideoAnnotator(MDGridLayout):
         self.annotation_canvas.subscribe_event(self.on_annotation_canvas_event)
 
     def load_video(self, video_path):
+        # tracemalloc.start()
         self.vid_path = video_path
         self.vid_cap = cv2.VideoCapture(video_path)
-        self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, 1)
+        self.vid_current_frame = 0
+        self.time_slider.value = 0
+        self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
         self.vid_fps = self.vid_cap.get(cv2.CAP_PROP_FPS)
         print('FPS')
         print(self.vid_fps)
         self.set_vid_frame_length(int(self.vid_cap.get(cv2.CAP_PROP_FRAME_COUNT) - 1))
         if self.vid_cap.isOpened():
             has_frames, img = self.vid_cap.read()
-            self.img = img
-            self.annotation_file = AnnotationFile(filepath=self.vid_path, img=self.img)
+            self.annotation_file = AnnotationFile(filepath=self.vid_path, img=img)
             filename = os.path.splitext(self.vid_path)[0]
             xml_path = os.path.join(self.vid_path, filename + '.xml')
             if os.path.isfile(xml_path):
@@ -239,11 +245,8 @@ class VideoAnnotator(MDGridLayout):
                 self.annotation_canvas.size_hint_y = None
                 self.annotation_canvas.width = dp(img.shape[1])
                 self.annotation_canvas.height = dp(img.shape[0])
-                for annotation in self.annotation_canvas.all_annotations:
-                    for i in self.annotation_canvas.all_annotations[annotation]:
-                        print(i.min_x)
-                    break
                 self.check_and_draw_annotation()
+                print(self.annotation_canvas.all_annotations)
 
                 # TODO: To implement scaling on scatter_canvas to follow window size
                 self.scatter_canvas._set_scale(1)
@@ -335,7 +338,6 @@ class VideoAnnotator(MDGridLayout):
         if isinstance(event, AnnotationCreatedEvent):
             # if event.annotation in self.annotation_canvas.annotations:
             #     return
-            print(" ")
             if hasattr(event.annotation, 'name'):
                 event.annotation.list_item = OneLineListItem(
                     text=event.annotation.name,
@@ -345,7 +347,7 @@ class VideoAnnotator(MDGridLayout):
                 self.annotation_list.add_widget(event.annotation.list_item)
 
                 # Run Prediction
-                if event.is_interactive:
+                if event.is_interactive and self.object_tracking_mode:
                     prediction = AnnotationPrediction()
                     prediction.on_complete_prediction = self.on_complete_prediction
                     prediction.start(
@@ -418,7 +420,9 @@ class VideoAnnotator(MDGridLayout):
                 if 'ctrl' in modifier and codepoint == 'z':
                     self.annotation_canvas.remove_annotation_at_index(len(self.annotation_canvas.annotations) - 1)
                 elif 'ctrl' in modifier and codepoint == 'a':
-                    self.annotation_canvas.set_mode_create_annotation(self.label, self.vid_current_frame)
+                    if len(self.annotation_canvas.annotations) < 2:
+                        rounded_to_annotation_frame = self.annotator_fps * round(self.vid_current_frame/self.annotator_fps)
+                        self.annotation_canvas.set_mode_create_annotation(self.label, rounded_to_annotation_frame)
                 elif 'ctrl' in modifier and codepoint == 's':
                     self.annotation_file.save_annotations(self.annotation_canvas.all_annotations)
                 elif key == 113:
@@ -453,32 +457,38 @@ class VideoAnnotator(MDGridLayout):
         # Redraw current frame annotations
         if current_frame in self.annotation_canvas.all_annotations:
             for annotation in self.annotation_canvas.all_annotations[current_frame]:
-                annotation.counter = self.counter
+                # annotation.counter = self.counter
                 # self.annotation_canvas.all_annotations[current_frame].append(
                 #     self.annotation_canvas.create_annotation(annotation, current_frame))
                 # self.annotation_canvas.all_annotations[current_frame].remove(annotation)
-                self.annotation_canvas.create_annotation(annotation, current_frame)
+                self.annotation_canvas.create_annotation_graphics(annotation, current_frame)
 
         # # Check if previous frame is labelled
-        # elif previous_frame in self.annotation_canvas.all_annotations:
-        #     # Iterate through annotations in the frame
-        #     for annotation in self.annotation_canvas.all_annotations[previous_frame]:
-        #         # Check if counter for image is 0, stop displaying
-        #         if annotation.counter > 0:
-        #             annotation.counter -= 1
-        #             if current_frame in self.annotation_canvas.all_annotations:
-        #                 self.annotation_canvas.all_annotations[current_frame].append(
-        #                     self.annotation_canvas.create_annotation(annotation, current_frame))
-        #             else:
-        #                 self.annotation_canvas.all_annotations[current_frame] = [
-        #                     self.annotation_canvas.create_annotation(annotation, current_frame)]
-        #             if annotation.counter == 0:
-        #                 self.stop_video()
+        if not self.object_tracking_mode and previous_frame in self.annotation_canvas.all_annotations:
+            # Iterate through annotations in the frame
+            for annotation in self.annotation_canvas.all_annotations[previous_frame]:
+                # Check if counter for image is 0, stop displaying
+
+                if annotation.counter > 0:
+                    annotation.counter -= 1
+                    key_frame = self.annotation_canvas.all_annotations.setdefault(int(current_frame), [])
+                    key_frame.append(self.annotation_canvas.create_annotation(annotation, current_frame))
+                    # self.annotation_canvas.all_annotations[current_frame] = [self.annotation_canvas.create_annotation(annotation, current_frame)]
+                    if annotation.counter == 0:
+                        self.stop_video()
+                    previous_annotation_index = self.annotation_canvas.all_annotations[previous_frame].index(annotation)
+                    self.annotation_canvas.all_annotations[previous_frame][previous_annotation_index].counter = 0
 
     def clear_all(self):
         self.annotation_list.clear_widgets()
-        self.annotation_canvas.all_annotations = {}
-        self.stop()
+        self.annotation_canvas.remove_all_annotations()
+        self.annotation_canvas.all_annotations.clear()
+        if self.clock is not None:
+            self.clock.cancel()
+        if self.vid_cap is not None:
+            self.vid_cap.release()
+            # snapshot = tracemalloc.take_snapshot()
+            # self.display_top(snapshot)
 
     def add_label(self):
         close_button = MDFlatButton(text='Close', on_release=self.close_dialog)
@@ -516,5 +526,32 @@ class VideoAnnotator(MDGridLayout):
         if self.annotation_file is not None and self.vid_current_frame in self.annotation_canvas.all_annotations:
             self.annotation_file.toggle_verify(self.vid_current_frame)
         pass
+
+    @staticmethod
+    def display_top(snapshot, key_type='lineno', limit=3):
+        snapshot = snapshot.filter_traces((
+            tracemalloc.Filter(False, "<frozen importlib._bootstrap>"),
+            tracemalloc.Filter(False, "<unknown>"),
+        ))
+        top_stats = snapshot.statistics(key_type)
+
+        print("Top %s lines" % limit)
+        for index, stat in enumerate(top_stats[:limit], 1):
+            frame = stat.traceback[0]
+            # replace "/path/to/module/file.py" with "module/file.py"
+            filename = os.sep.join(frame.filename.split(os.sep)[-2:])
+            print("#%s: %s:%s: %.1f KiB"
+                  % (index, filename, frame.lineno, stat.size / 1024))
+            line = linecache.getline(frame.filename, frame.lineno).strip()
+            if line:
+                print('    %s' % line)
+
+        other = top_stats[limit:]
+        if other:
+            size = sum(stat.size for stat in other)
+            print("%s other: %.1f KiB" % (len(other), size / 1024))
+        total = sum(stat.size for stat in top_stats)
+        print("Total allocated size: %.1f KiB" % (total / 1024))
+
 
 

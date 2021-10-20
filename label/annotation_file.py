@@ -14,16 +14,19 @@ class AnnotationFile:
     def save_annotations(self, annotations):
         print("try saving")
         image_annotations = {}
+        print("input")
+        print(annotations)
         for frame in annotations:
             for i in annotations[frame]:
                 bbox = [i.min_x, i.min_y, i.max_x, i.max_y]
                 label = i.name
                 verified = False
                 annotation = [label, bbox, verified]
-                if i.frame in image_annotations:
-                    image_annotations[int(i.frame)].append(annotation)
+                if frame in image_annotations:
+                    image_annotations[frame].append(annotation)
                 else:
-                    image_annotations[int(i.frame)] = [annotation]
+                    image_annotations[frame] = [annotation]
+        print(image_annotations)
         try:
             filename = self.filename + ".xml"
             video_folder_path = os.path.dirname(self.filepath)
