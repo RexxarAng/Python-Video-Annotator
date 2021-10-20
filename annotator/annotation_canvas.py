@@ -17,6 +17,7 @@ class AnnotationCanvas(Image):
 
     frame = 0
     counter = 20
+    verified = False
     current_label = 'no-label'
     resize_corner: Corner = Corner.Bottom_Right
     all_annotations = {}
@@ -75,6 +76,7 @@ class AnnotationCanvas(Image):
                     name=self.current_label,
                     frame=self.frame,
                     counter=self.counter,
+                    verified=self.verified,
                     bounding_box=(touch.x, touch.y, touch.x, touch.y),
                     color=(0, 1, 0, 1)
                 )
@@ -178,6 +180,7 @@ class AnnotationCanvas(Image):
             name=annotation.name,
             frame=self.frame,
             counter=annotation.counter,
+            verified=annotation.verified,
             bounding_box=(annotation.min_x, annotation.min_y, annotation.max_x, annotation.max_y),
             color=(0, 1, 0, 1)
         )
@@ -193,6 +196,7 @@ class AnnotationCanvas(Image):
                     parent=self,
                     name=annotation[0],
                     frame=self.frame,
+                    verified=annotation[2],
                     counter=0,
                     bounding_box=(annotation[1][0], annotation[1][1], annotation[1][2], annotation[1][3]),
                     color=(0, 1, 0, 1)
@@ -202,10 +206,11 @@ class AnnotationCanvas(Image):
                 else:
                     self.all_annotations[frame] = [annotation_graphic]
 
-    @staticmethod
-    def convert_annotation_graphic_to_annotation(annotation):
-        bbox = [annotation.min_x, annotation.min_y, annotation.max_x, annotation.max_y]
-        label = annotation.name
-        converted_annotation = [label, bbox, False]
-        print(converted_annotation)
-        return converted_annotation
+    # TODO: DEL
+    # @staticmethod
+    # def convert_annotation_graphic_to_annotation(annotation):
+    #     bbox = [annotation.min_x, annotation.min_y, annotation.max_x, annotation.max_y]
+    #     label = annotation.name
+    #     converted_annotation = [label, bbox, False]
+    #     print(converted_annotation)
+    #     return converted_annotation

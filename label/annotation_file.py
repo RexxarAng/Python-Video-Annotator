@@ -20,8 +20,7 @@ class AnnotationFile:
             for i in annotations[frame]:
                 bbox = [i.min_x, i.min_y, i.max_x, i.max_y]
                 label = i.name
-                verified = False
-                annotation = [label, bbox, verified]
+                annotation = [label, bbox, i.verified]
                 if frame in image_annotations:
                     image_annotations[frame].append(annotation)
                 else:
@@ -45,10 +44,11 @@ class AnnotationFile:
                 writer.add_bnd_box_frame(frame_object)
             if annotations:
                 writer.save(target_file=filename)
+                return True
 
+            return False
             # self.label_file.save_pascal_voc_format(filename=self.filename, annotations=image_annotations,
             #                                        video_path=self.filepath, image_shape=self.img.shape)
-
         except:
             print("Error!")
             return False
@@ -74,4 +74,30 @@ class AnnotationFile:
         writer = PascalVocWriter(video_folder_name, video_file_name,
                                  self.img.shape, local_vid_path=self.filepath)
         xml_file = self.filename + '.xml'
-        writer.toggle_verify(frame, xml_file)
+        return writer.toggle_verify_till_frame(frame, xml_file)
+
+    def verify_till_frame(self, frame):
+        video_folder_path = os.path.dirname(self.filepath)
+        video_folder_name = os.path.split(video_folder_path)[-1]
+        video_file_name = os.path.basename(self.filepath)
+
+        writer = PascalVocWriter(video_folder_name, video_file_name,
+                                 self.img.shape, local_vid_path=self.filepath)
+        xml_file = self.filename + '.xml'
+        if os.path.isfile(xml_file):
+            return writer.verify_till_frame(frame, xml_file)
+        else:
+            return False
+
+    def unverify_all(self):
+        video_folder_path = os.path.dirname(self.filepath)
+        video_folder_name = os.path.split(video_folder_path)[-1]
+        video_file_name = os.path.basename(self.filepath)
+
+        writer = PascalVocWriter(video_folder_name, video_file_name,
+                                 self.img.shape, local_vid_path=self.filepath)
+        xml_file = self.filename + '.xml'
+        if os.path.isfile(xml_file):
+            return writer.unverify_all(xml_file)
+        else:
+            return False

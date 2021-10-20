@@ -19,14 +19,14 @@ from annotator.annotation_event import *
 from label.annotation_file import AnnotationFile
 from object_tracking.annotation_prediction import AnnotationPrediction
 import os
-from kivy.uix.scatterlayout import ScatterLayout, ScatterPlaneLayout
-import gc
+from kivy.uix.scatterlayout import ScatterLayout
 import tracemalloc
 import linecache
 
 
 class IconButtonTooltips(MDIconButton, MDTooltip):
     pass
+
 
 class VideoPlayBackMode(Enum):
     Stopped = 1
@@ -136,12 +136,21 @@ class VideoAnnotator(MDGridLayout):
 
         self.verify_button = IconButtonTooltips(
             icon='check',
-            tooltip_text='Verify frame',
+            tooltip_text='Verify all past frames',
             md_bg_color=[.8, .8, .8, 1],
             user_font_size=20
         )
 
         self.verify_button.on_press = self.verify_frame
+
+        self.unverify_button = IconButtonTooltips(
+            icon='close',
+            tooltip_text='Un-verify all frames',
+            md_bg_color=[.8, .8, .8, 1],
+            user_font_size=20
+        )
+
+        self.unverify_button.on_press = self.unverify_frame
 
         self.bottom_features_layout = MDBoxLayout(
             size_hint_y=None,
@@ -152,6 +161,7 @@ class VideoAnnotator(MDGridLayout):
 
         self.bottom_features_layout.add_widget(self.add_label_button)
         self.bottom_features_layout.add_widget(self.verify_button)
+        self.bottom_features_layout.add_widget(self.unverify_button)
         self.bottom_layout.add_widget(self.bottom_features_layout)
         self.time_layout.add_widget(self.bottom_layout)
         self.time_control_go_back_button = MDIconButton(
@@ -257,7 +267,7 @@ class VideoAnnotator(MDGridLayout):
                 print(self.annotation_canvas.all_annotations)
 
                 # TODO: To implement scaling on scatter_canvas to follow window size
-                self.scatter_canvas._set_scale(1)
+                self.scatter_canvas._set_scale(.5)
 
     def set_vid_frame_length(self, video_frame):
         self.vid_frame_length = video_frame
@@ -432,7 +442,12 @@ class VideoAnnotator(MDGridLayout):
                         rounded_to_annotation_frame = self.annotator_fps * round(self.vid_current_frame/self.annotator_fps)
                         self.annotation_canvas.set_mode_create_annotation(self.label, rounded_to_annotation_frame)
                 elif 'ctrl' in modifier and codepoint == 's':
-                    self.annotation_file.save_annotations(self.annotation_canvas.all_annotations)
+                    if self.annotation_file.save_annotations(self.annotation_canvas.all_annotations):
+                        print("success")
+                    else:
+                        print("failed")
+                elif 'ctrl' in modifier and codepoint == 't':
+                    self.verify_frame()
                 elif key == 113:
                     self.on_press_back_button()
                 elif key == 101:
@@ -510,6 +525,7 @@ class VideoAnnotator(MDGridLayout):
 
     def close_dialog(self, obj):
         self.dialog.dismiss()
+        self.dialog = None
 
     def confirm_label(self, obj):
         self.label = self.dialog.content_cls.text
@@ -531,9 +547,28 @@ class VideoAnnotator(MDGridLayout):
             obj.bg_color = (0, 1, 0, .5)
 
     def verify_frame(self):
-        if self.annotation_file is not None and self.vid_current_frame in self.annotation_canvas.all_annotations:
-            self.annotation_file.toggle_verify(self.vid_current_frame)
-        pass
+        confirm_button = MDFlatButton(text="Okay", on_release=self.close_dialog)
+        if self.annotation_file is not None and self.annotation_file.verify_till_frame(self.vid_current_frame):
+            self.dialog = MDDialog(title="All frames before current frame are verified",
+                                   type="custom",
+                                   buttons=[confirm_button])
+        else:
+            self.dialog = MDDialog(title="Error has occurred, check if u have saved the annotations",
+                                   type="custom",
+                                   buttons=[confirm_button])
+        self.dialog.open()
+
+    def unverify_frame(self):
+        confirm_button = MDFlatButton(text="Okay", on_release=self.close_dialog) 
+        if self.annotation_file is not None and self.annotation_file.unverify_all():
+            self.dialog = MDDialog(title="All frames are now unverified",
+                                   type="custom",
+                                   buttons=[confirm_button])
+        else:
+            self.dialog = MDDialog(title="Error has occurred, check if u have saved the annotations",
+                                   type="custom",
+                                   buttons=[confirm_button])
+        self.dialog.open()
 
     @staticmethod
     def display_top(snapshot, key_type='lineno', limit=3):

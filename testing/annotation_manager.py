@@ -202,7 +202,7 @@ class AnnotationFile:
         writer = PascalVocWriter(video_folder_name, video_file_name,
                                  self.img.shape, local_vid_path=self.filepath)
         xml_file = self.filename + '.xml'
-        writer.toggle_verify(frame, xml_file)
+        writer.toggle_verify_till_frame(frame, xml_file)
 
     @staticmethod
     def convert_cv2_bnd_box_to_points(bnd_box):

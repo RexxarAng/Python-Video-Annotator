@@ -137,6 +137,60 @@ class PascalVocWriter:
                 break
         et.write(filename)
 
+    @staticmethod
+    def toggle_verify_till_frame(frame, filename):
+        if not filename.endswith(XML_EXT):
+            return False
+        parser = etree.XMLParser(encoding=ENCODE_METHOD)
+        et = ElementTree.parse(filename, parser=parser)
+        xml_tree = et.getroot()
+        for node in xml_tree.findall('.//framenumber'):
+            if int(node.text) <= frame:
+                parent_tag = node.find('..')
+                try:
+                    verified = parent_tag.attrib['verified']
+                    if verified == 'yes':
+                        del parent_tag.attrib['verified']
+                except KeyError:
+                    parent_tag.attrib['verified'] = 'yes'
+        et.write(filename)
+        return True
+
+    @staticmethod
+    def verify_till_frame(frame, filename):
+        if not filename.endswith(XML_EXT):
+            return False
+        parser = etree.XMLParser(encoding=ENCODE_METHOD)
+        et = ElementTree.parse(filename, parser=parser)
+        xml_tree = et.getroot()
+        for node in xml_tree.findall('.//framenumber'):
+            if int(node.text) <= frame:
+                parent_tag = node.find('..')
+                try:
+                    parent_tag.attrib['verified']
+                except KeyError:
+                    parent_tag.attrib['verified'] = 'yes'
+        et.write(filename)
+        return True
+
+    @staticmethod
+    def unverify_all(filename):
+        if not filename.endswith(XML_EXT):
+            return False
+        parser = etree.XMLParser(encoding=ENCODE_METHOD)
+        et = ElementTree.parse(filename, parser=parser)
+        xml_tree = et.getroot()
+        for node in xml_tree.findall('.//framenumber'):
+            parent_tag = node.find('..')
+            try:
+                verified = parent_tag.attrib['verified']
+                if verified == 'yes':
+                    del parent_tag.attrib['verified']
+            except KeyError:
+                continue
+        et.write(filename)
+        return True
+
     def save(self, target_file=None):
         root = self.gen_xml()
         self.append_objects(root)
