@@ -11,6 +11,7 @@ from kivymd.uix.slider import MDSlider
 from kivy.graphics.texture import Texture
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.textfield import MDTextField
+from kivymd.uix.tooltip import MDTooltip
 import cv2
 from enum import Enum
 from annotator.annotation_canvas import (AnnotationCanvas)
@@ -23,6 +24,9 @@ import gc
 import tracemalloc
 import linecache
 
+
+class IconButtonTooltips(MDIconButton, MDTooltip):
+    pass
 
 class VideoPlayBackMode(Enum):
     Stopped = 1
@@ -111,12 +115,15 @@ class VideoAnnotator(MDGridLayout):
         )
         self.bottom_layout.add_widget(self.time_control_layout)
 
-        self.add_label_button = MDIconButton(
-            icon='label',
-            md_bg_color=[.8, .8, .8, 1],
-            user_font_size=20
-        )
-
+        # self.add_label_button = MDIconButton(
+        #     icon='label',
+        #     md_bg_color=[.8, .8, .8, 1],
+        #     user_font_size=20
+        # )
+        self.add_label_button = IconButtonTooltips(icon='label',
+                                                   tooltip_text='Add new label',
+                                                   md_bg_color=[.8, .8, .8, 1],
+                                                   user_font_size=20)
         self.add_label_button.on_press = self.add_label
 
         self.label_text_field = MDTextField(
@@ -127,8 +134,9 @@ class VideoAnnotator(MDGridLayout):
             width=250
         )
 
-        self.verify_button = MDIconButton(
+        self.verify_button = IconButtonTooltips(
             icon='check',
+            tooltip_text='Verify frame',
             md_bg_color=[.8, .8, .8, 1],
             user_font_size=20
         )

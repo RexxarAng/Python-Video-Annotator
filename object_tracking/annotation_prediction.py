@@ -90,6 +90,7 @@ class AnnotationPrediction:
             result[current_frame] = self.convert_cv2_bounding_box_to_bounding_box(bounding_box)
 
         self.on_complete_prediction(self.context, result)
+        self.vid_cap.release()
 
     @staticmethod
     def convert_bounding_box_to_cv2_bnd_box(bounding_box: BoundingBox):
