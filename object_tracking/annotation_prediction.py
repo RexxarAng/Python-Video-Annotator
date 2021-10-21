@@ -6,7 +6,7 @@ from annotator.annotation_component import BoundingBox
 class AnnotationPrediction:
     context = None
     vid_cap = None
-
+    n_id = None
     vid_start_frame: int
     vid_frame_length: int
     vid_frame_per_annotation_frame: int
@@ -23,13 +23,14 @@ class AnnotationPrediction:
               bounding_box: BoundingBox,
               vid_start_frame: int,
               vid_frame_per_annotation_frame: int,
-              frame_limit: int):
+              frame_limit: int,
+              n_id: str):
         cv2_bounding_box = self.convert_bounding_box_to_cv2_bnd_box(bounding_box)
         self.context = context
         self.vid_start_frame = vid_start_frame
         self.vid_frame_per_annotation_frame = vid_frame_per_annotation_frame
         self.prediction_frame_limit = frame_limit
-
+        self.n_id = n_id
         # Initialize tracker components
         self.vid_cap = cv2.VideoCapture(vid_path)
         self.vid_frame_length = self.vid_cap.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -40,7 +41,7 @@ class AnnotationPrediction:
         Thread(target=self._start_tracking, args=()).start()
         return self
 
-    def on_complete_prediction(self, context, result):
+    def on_complete_prediction(self, context, result, n_id):
         pass
 
     def _create_tracker(self, cv2_bounding_box):
@@ -89,7 +90,7 @@ class AnnotationPrediction:
 
             result[current_frame] = self.convert_cv2_bounding_box_to_bounding_box(bounding_box)
 
-        self.on_complete_prediction(self.context, result)
+        self.on_complete_prediction(self.context, result, self.n_id)
         self.vid_cap.release()
 
     @staticmethod

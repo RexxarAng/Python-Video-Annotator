@@ -22,6 +22,7 @@ import os
 from kivy.uix.scatterlayout import ScatterLayout
 import tracemalloc
 import linecache
+from kivymd.toast import toast
 
 
 class IconButtonTooltips(MDIconButton, MDTooltip):
@@ -376,6 +377,7 @@ class VideoAnnotator(MDGridLayout):
         if isinstance(event, AnnotationCreatedEvent):
             # if event.annotation in self.annotation_canvas.annotations:
             #     return
+            Window.set_system_cursor('arrow')
             if hasattr(event.annotation, 'name'):
                 event.annotation.list_item = OneLineListItem(
                     text=event.annotation.name,
@@ -386,6 +388,7 @@ class VideoAnnotator(MDGridLayout):
 
                 # Run Prediction
                 if event.is_interactive and self.object_tracking_mode:
+                    toast("Starting object tracking, please wait")
                     prediction = AnnotationPrediction()
                     prediction.on_complete_prediction = self.on_complete_prediction
                     prediction.start(
@@ -394,7 +397,8 @@ class VideoAnnotator(MDGridLayout):
                         event.annotation,
                         self.get_current_annotation_frame(),
                         self.get_annotation_interval(),
-                        50
+                        50,
+                        event.annotation.n_id
                     )
 
         elif isinstance(event, AnnotationDeletedEvent):
@@ -411,8 +415,7 @@ class VideoAnnotator(MDGridLayout):
                         list_item.bg_color = (0, 0, 0, 0)
                 event.annotation.list_item.bg_color = (0, 1, 0, .5)
 
-    def on_complete_prediction(self, context, result):
-        print('Prediction is completed!!! ------------------------')
+    def on_complete_prediction(self, context, result, n_id):
         print(context)
         print(result)
         for key, value in result.items():
@@ -422,12 +425,13 @@ class VideoAnnotator(MDGridLayout):
                 name=context.name,
                 frame=int(key),
                 counter=self.counter,
+                verified=False,
+                n_id=n_id,
                 bounding_box=(value.min_x, value.min_y, value.max_x, value.max_y),
                 color=(0, 1, 0, 1)
             )
             key_frame.append(annotation_graphic)
-        print("current all annotations list")
-        print(self.annotation_canvas.all_annotations)
+        toast('Object Tracking is completed')
 
         # self.play_video()
 
@@ -459,28 +463,22 @@ class VideoAnnotator(MDGridLayout):
                     self.annotation_canvas.remove_annotation_at_index(len(self.annotation_canvas.annotations) - 1)
                 elif 'ctrl' in modifier and codepoint == 'a':
                     if len(self.annotation_canvas.annotations) < 2:
+                        Window.set_system_cursor('crosshair')
                         rounded_to_annotation_frame = self.annotator_fps * round(self.vid_current_frame/self.annotator_fps)
                         self.annotation_canvas.set_mode_create_annotation(self.label, rounded_to_annotation_frame)
+                    else:
+                        toast("Only maximum of two annotations can be made")
+
                 elif 'ctrl' in modifier and codepoint == 's':
                     self.save_annotations()
                 elif 'ctrl' in modifier and codepoint == 't':
                     self.verify_frame()
-                elif key == 113:
+                elif key == 113 or key == 276:
+                    # Q or Left Arrow
                     self.on_press_back_button()
-                elif key == 101:
+                elif key == 101 or key == 275:
+                    # E or Right Arrow
                     self.on_press_next_button()
-                # elif key == 276:
-                #     # Left Arrow
-                #     self.annotation_canvas.move_left()
-                # elif key == 275:
-                #     # Right Arrow
-                #     self.annotation_canvas.move_right()
-                # elif key == 274:
-                #     # Down Arrow
-                #     self.annotation_canvas.move_down()
-                # elif key == 273:
-                #     # Up Arrow
-                #     self.annotation_canvas.move_up()
                 elif key == 127 or key == 8:
                     # Delete Key
                     self.annotation_canvas.remove_selected_annotation()
@@ -497,13 +495,9 @@ class VideoAnnotator(MDGridLayout):
         # Redraw current frame annotations
         if current_frame in self.annotation_canvas.all_annotations:
             for annotation in self.annotation_canvas.all_annotations[current_frame]:
-                # annotation.counter = self.counter
-                # self.annotation_canvas.all_annotations[current_frame].append(
-                #     self.annotation_canvas.create_annotation(annotation, current_frame))
-                # self.annotation_canvas.all_annotations[current_frame].remove(annotation)
                 self.annotation_canvas.create_annotation_graphics(annotation, current_frame)
 
-        # # Check if previous frame is labelled
+        # Check if previous frame is labelled
         if not self.object_tracking_mode and previous_frame in self.annotation_canvas.all_annotations:
             # Iterate through annotations in the frame
             for annotation in self.annotation_canvas.all_annotations[previous_frame]:

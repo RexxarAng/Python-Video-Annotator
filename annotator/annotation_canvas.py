@@ -148,26 +148,20 @@ class AnnotationCanvas(Image):
     def remove_annotation(self, annotation):
         if annotation:
             annotation.remove_graphic()
-            self.annotations.remove(annotation)
             self.post_event(AnnotationDeletedEvent(annotation=annotation))
+            self.annotations.remove(annotation)
             if annotation == self.selected_annotation:
                 self.selected_annotation = None
 
     def remove_all_annotations(self):
-        for annotation in self.annotations:
+        print(self.annotations)
+        # Remove in reverse order, to prevent missing out items in the list
+        for annotation in reversed(self.annotations):
             print('Clearing annotations')
             self.remove_annotation(annotation)
 
     def create_annotation_graphics(self, annotation, current_frame):
         self.frame = current_frame
-        # annotation_graphic = AnnotationGraphic(
-        #     parent=self,
-        #     name=annotation.name,
-        #     frame=self.frame,
-        #     counter=annotation.counter,
-        #     bounding_box=(annotation.min_x, annotation.min_y, annotation.max_x, annotation.max_y),
-        #     color=(0, 1, 0, 1)
-        # )
         annotation.redraw()
         self.post_event(AnnotationCreatedEvent(annotation=annotation))
         self.annotations.append(annotation)
@@ -181,6 +175,7 @@ class AnnotationCanvas(Image):
             frame=self.frame,
             counter=annotation.counter,
             verified=annotation.verified,
+            n_id=annotation.n_id,
             bounding_box=(annotation.min_x, annotation.min_y, annotation.max_x, annotation.max_y),
             color=(0, 1, 0, 1)
         )
@@ -197,6 +192,7 @@ class AnnotationCanvas(Image):
                     name=annotation[0],
                     frame=self.frame,
                     verified=annotation[2],
+                    n_id=annotation[3],
                     counter=0,
                     bounding_box=(annotation[1][0], annotation[1][1], annotation[1][2], annotation[1][3]),
                     color=(0, 1, 0, 1)

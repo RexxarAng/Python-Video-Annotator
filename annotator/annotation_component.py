@@ -89,6 +89,7 @@ class AnnotationGraphic(BoundingBox, CanvasGraphic, IDraggable, IResizable):
     _resize_boxes = None        # Kivy's Rectangles
     _label = None               # Kivy's Rectangle with text texture
     _show_resize_hint = False
+    n_id = None
 
     def __init__(self, **kwargs):
         # Required parameters
@@ -101,6 +102,10 @@ class AnnotationGraphic(BoundingBox, CanvasGraphic, IDraggable, IResizable):
         self.color = kwargs.get('color', (0, 1, 0, 0.8))
         self.counter = kwargs.get('counter', '<no-value>')
         self.verified = kwargs.get('verified', '<no-value>')
+        if 'n_id' in kwargs:
+            self.n_id = kwargs.get('n_id')
+        else:
+            self.n_id = generate()
 
         super().__init__(**kwargs)
 

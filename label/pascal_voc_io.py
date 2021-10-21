@@ -79,7 +79,7 @@ class PascalVocWriter:
         for frame in frame_object:
             box = frame[0]
             bnd_box = {'xmin': box[0], 'ymin': box[1], 'xmax': box[2], 'ymax': box[3], 'name': frame[1],
-                       'frame': frame[2], 'verified': frame[3]}
+                       'frame': frame[2], 'verified': frame[3], 'n_id': frame[4]}
             frame_array.append(bnd_box)
         self.box_list.append(frame_array)
 
@@ -100,6 +100,8 @@ class PascalVocWriter:
                 name = SubElement(annotation, 'name')
                 name.text = str(each_object['name'])
                 truncated = SubElement(annotation, 'truncated')
+                n_id = SubElement(annotation, 'n_id')
+                n_id.text = str(each_object['n_id'])
                 if int(float(each_object['ymax'])) == int(float(self.img_size[0])) or (
                         int(float(each_object['ymin'])) == 1):
                     truncated.text = "1"  # max == height or min
@@ -247,7 +249,8 @@ class PascalVocReader:
                 bnd_box = annotation_iter.find('bndbox')
                 bnd_box = self.convert_points_to_bnd_box(bnd_box)
                 label = annotation_iter.find('name').text
-                annotations.append([label, bnd_box, self.verified])
+                n_id = annotation_iter.find('n_id').text
+                annotations.append([label, bnd_box, self.verified, n_id])
             self.annotations[frame_number] = annotations
         return True
 

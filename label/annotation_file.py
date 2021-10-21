@@ -20,7 +20,7 @@ class AnnotationFile:
             for i in annotations[frame]:
                 bbox = [i.min_x, i.min_y, i.max_x, i.max_y]
                 label = i.name
-                annotation = [label, bbox, i.verified]
+                annotation = [label, bbox, i.verified, i.n_id]
                 if frame in image_annotations:
                     image_annotations[frame].append(annotation)
                 else:
@@ -40,7 +40,8 @@ class AnnotationFile:
                     label = annotation[0]
                     bnd_box = annotation[1]
                     verified = annotation[2]
-                    frame_object.append([bnd_box, label, frame, verified])
+                    n_id = annotation[3]
+                    frame_object.append([bnd_box, label, frame, verified, n_id])
                 writer.add_bnd_box_frame(frame_object)
             if annotations:
                 writer.save(target_file=filename)
