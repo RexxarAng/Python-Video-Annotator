@@ -97,7 +97,7 @@ class VideoAnnotator(MDGridLayout):
         self.time_slider = MDSlider(
             color=(.6, .6, .6, 1))
         self.time_slider.hint_radius = 2
-        self.time_slider.bind(on_touch_move=self.on_touch_up_timer_slider, on_touch_up=self.on_touch_up_timer_slider)
+        self.time_slider.bind(on_touch_move=self.on_touch_move_timer_slider, on_touch_down=self.on_touch_down_timer_slider, on_touch_up=self.on_touch_up_timer_slider)
         # self.time_slider.bind(value=self.on_touch_up_timer_slider)
         self.time_layout.add_widget(self.time_slider)
 
@@ -153,6 +153,15 @@ class VideoAnnotator(MDGridLayout):
 
         self.unverify_button.on_press = self.unverify_frame
 
+        self.save_annotations_button = IconButtonTooltips(
+            icon='content-save',
+            tooltip_text='Save All Annotations',
+            md_bg_color=[.8, .8, .8, 1],
+            user_font_size=20
+        )
+
+        self.save_annotations_button.on_press = self.save_annotations
+
         self.bottom_features_layout = MDBoxLayout(
             size_hint_y=None,
             height=dp(40),
@@ -161,6 +170,7 @@ class VideoAnnotator(MDGridLayout):
         )
 
         self.bottom_features_layout.add_widget(self.add_label_button)
+        self.bottom_features_layout.add_widget(self.save_annotations_button)
         self.bottom_features_layout.add_widget(self.verify_button)
         self.bottom_features_layout.add_widget(self.unverify_button)
         self.bottom_layout.add_widget(self.bottom_features_layout)
@@ -337,16 +347,25 @@ class VideoAnnotator(MDGridLayout):
     def convert_video_frame_from_annotator_frame(self, value):
         return int(value * self.vid_fps / self.annotator_fps)
 
+    def on_touch_move_timer_slider(self, widget, touch):
+        if self.vid_cap is not None and widget.collide_point(*touch.pos):
+            print('touched1')
+            self.annotation_canvas.remove_all_annotations()
+            print(self.time_slider.value)
+            annotation_frame = self.convert_video_frame_from_annotator_frame(self.time_slider.value)
+            self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, annotation_frame)
+            self.set_vid_current_frame(annotation_frame)
+
+    def on_touch_down_timer_slider(self, widget, touch):
+        if self.vid_cap is not None and widget.collide_point(*touch.pos):
+            if self.clock is not None:
+                self.stop_video()
+
     def on_touch_up_timer_slider(self, widget, touch):
-        if self.vid_cap is not None:
-            if widget.collide_point(*touch.pos):
-                print('touched1')
-                self.annotation_canvas.remove_all_annotations()
-                # Clock.schedule_once(self.on_timer_slider_update, 0.01)
-                print(self.time_slider.value)
-                annotation_frame = self.convert_video_frame_from_annotator_frame(self.time_slider.value)
-                self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, annotation_frame)
-                self.set_vid_current_frame(annotation_frame)
+        if self.vid_cap is not None and widget.collide_point(*touch.pos):
+            self.on_touch_move_timer_slider(widget, touch)
+            if self.clock is None:
+                self.play_video()
 
     def on_timer_slider_update(self, widget):
         self.stop_video()
@@ -443,10 +462,7 @@ class VideoAnnotator(MDGridLayout):
                         rounded_to_annotation_frame = self.annotator_fps * round(self.vid_current_frame/self.annotator_fps)
                         self.annotation_canvas.set_mode_create_annotation(self.label, rounded_to_annotation_frame)
                 elif 'ctrl' in modifier and codepoint == 's':
-                    if self.annotation_file.save_annotations(self.annotation_canvas.all_annotations):
-                        print("success")
-                    else:
-                        print("failed")
+                    self.save_annotations()
                 elif 'ctrl' in modifier and codepoint == 't':
                     self.verify_frame()
                 elif key == 113:
@@ -514,14 +530,27 @@ class VideoAnnotator(MDGridLayout):
             # snapshot = tracemalloc.take_snapshot()
             # self.display_top(snapshot)
 
+    def save_annotations(self):
+        confirm_button = MDFlatButton(text="Okay", on_release=self.close_dialog)
+        if self.annotation_file is not None:
+            if self.annotation_file.save_annotations(self.annotation_canvas.all_annotations):
+                self.dialog = MDDialog(title="All annotated frames are saved",
+                                       type="custom",
+                                       buttons=[confirm_button])
+            else:
+                self.dialog = MDDialog(title="All annotated frames are saved",
+                                       type="custom",
+                                       buttons=[confirm_button])
+        self.dialog.open()
+
     def add_label(self):
         close_button = MDFlatButton(text='Close', on_release=self.close_label_dialog)
         confirm_button = MDFlatButton(text="Confirm", on_release=self.confirm_label)
         if self.label_dialog is None:
             self.label_dialog = MDDialog(title="Create a new label",
-                                   type="custom",
-                                   content_cls=self.label_text_field,
-                                   buttons=[close_button, confirm_button])
+                                         type="custom",
+                                         content_cls=self.label_text_field,
+                                         buttons=[close_button, confirm_button])
         self.label_dialog.open()
 
     def close_dialog(self, obj):

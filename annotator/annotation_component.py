@@ -1,6 +1,5 @@
 from enum import Enum
 from abc import ABC, abstractmethod
-
 from kivy.uix.widget import Widget
 from kivy.graphics.instructions import Canvas
 from kivy.core.text import Label as CoreLabel
