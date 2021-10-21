@@ -1,7 +1,6 @@
 from enum import Enum
 from abc import ABC, abstractmethod
 from kivy.uix.widget import Widget
-from kivy.graphics.instructions import Canvas
 from kivy.core.text import Label as CoreLabel
 from kivy.graphics.vertex_instructions import (Line, Rectangle)
 from kivy.graphics.context_instructions import Color
@@ -131,7 +130,10 @@ class AnnotationGraphic(BoundingBox, CanvasGraphic, IDraggable, IResizable):
         if self._show_resize_hint:
             with self.parent.canvas:
                 # Draw resize-hint-box
-                Color(0, 1, 0, 0.5)
+                if self.verified:
+                    Color(*self.color)
+                else:
+                    Color(0, 1, 0, 1)
                 if self._resize_boxes is None:
                     self._resize_boxes = []
                     for _ in range(0, 4, 1):
@@ -150,7 +152,7 @@ class AnnotationGraphic(BoundingBox, CanvasGraphic, IDraggable, IResizable):
         with self.parent.canvas:
             pos = self.get_corner_point(Corner.Top_Left)
             if self._label is None:
-                Color(0, 1, 0, 1)
+                Color(*self.color)
                 text_label = CoreLabel(text=self.name, font_size=20)
                 text_label.refresh()
                 text_texture = text_label.texture

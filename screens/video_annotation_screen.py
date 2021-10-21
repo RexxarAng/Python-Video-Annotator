@@ -42,6 +42,7 @@ class VideoAnnotator(MDGridLayout):
     annotation_file = None
     annotation_canvas = None
     vid_path = None
+    xml_path = None
     vid_cap = None
     vid_current_frame = 0
     vid_frame_length = 0
@@ -260,11 +261,11 @@ class VideoAnnotator(MDGridLayout):
             has_frames, img = self.vid_cap.read()
             self.annotation_file = AnnotationFile(filepath=self.vid_path, img=img)
             filename = os.path.splitext(self.vid_path)[0]
-            xml_path = os.path.join(self.vid_path, filename + '.xml')
-            if os.path.isfile(xml_path):
+            self.xml_path = os.path.join(self.vid_path, filename + '.xml')
+            if os.path.isfile(self.xml_path):
                 # self.annotation_canvas.all_annotations = self.annotation_file.load_pascal_xml_by_filename(xml_path)
-                print(self.annotation_file.load_pascal_xml_by_filename(xml_path))
-                self.annotation_canvas.create_annotation_from_file(self.annotation_file.load_pascal_xml_by_filename(xml_path))
+                print(self.annotation_file.load_pascal_xml_by_filename(self.xml_path))
+                self.annotation_canvas.create_annotation_from_file(self.annotation_file.load_pascal_xml_by_filename(self.xml_path))
             if has_frames:
                 buffer = cv2.flip(img, 0).tostring()
                 print(img.shape)
@@ -476,7 +477,7 @@ class VideoAnnotator(MDGridLayout):
                 elif 'ctrl' in modifier and codepoint == 't':
                     self.verify_frame()
                 elif 'ctrl' in modifier and codepoint == 'd':
-                    self.annotation_canvas.remove_associated_frames()
+                    self.remove_all_associated_frames()
                 elif key == 113 or key == 276:
                     # Q or Left Arrow
                     self.on_press_back_button()
@@ -579,27 +580,48 @@ class VideoAnnotator(MDGridLayout):
 
     def verify_frame(self):
         confirm_button = MDFlatButton(text="Okay", on_release=self.close_dialog)
-        if self.annotation_file is not None and self.annotation_file.verify_till_frame(self.vid_current_frame):
-            self.dialog = MDDialog(title="All frames before current frame are verified",
-                                   type="custom",
-                                   buttons=[confirm_button])
-        else:
-            self.dialog = MDDialog(title="Error has occurred, check if u have saved the annotations",
-                                   type="custom",
-                                   buttons=[confirm_button])
+        if self.annotation_file is not None:
+            self.annotation_file.save_annotations(self.annotation_canvas.all_annotations)
+            if self.annotation_file.verify_till_frame(self.vid_current_frame):
+                self.annotation_canvas.create_annotation_from_file(
+                    self.annotation_file.load_pascal_xml_by_filename(self.xml_path))
+                self.dialog = MDDialog(title="All frames before current frame are verified",
+                                       type="custom",
+                                       buttons=[confirm_button])
+            else:
+                self.dialog = MDDialog(title="Error has occurred, check if any annotations are saved",
+                                       type="custom",
+                                       buttons=[confirm_button])
         self.dialog.open()
 
     def unverify_frame(self):
         confirm_button = MDFlatButton(text="Okay", on_release=self.close_dialog)
-        if self.annotation_file is not None and self.annotation_file.unverify_all():
-            self.dialog = MDDialog(title="All frames are now unverified",
+        if self.annotation_file is not None:
+            self.annotation_file.save_annotations(self.annotation_canvas.all_annotations)
+            if self.annotation_file.unverify_all():
+                self.annotation_canvas.create_annotation_from_file(
+                    self.annotation_file.load_pascal_xml_by_filename(self.xml_path))
+                self.dialog = MDDialog(title="All frames are now unverified",
+                                       type="custom",
+                                       buttons=[confirm_button])
+            else:
+                self.dialog = MDDialog(title="Error has occurred, check if u have saved the annotations",
+                                       type="custom",
+                                       buttons=[confirm_button])
+        self.dialog.open()
+
+    def remove_all_associated_frames(self):
+        confirm_button = MDFlatButton(text="Okay", on_release=self.close_dialog)
+        if self.annotation_canvas.remove_associated_frames():
+            self.dialog = MDDialog(title="All associated frames to the selected frame has been removed",
                                    type="custom",
                                    buttons=[confirm_button])
         else:
-            self.dialog = MDDialog(title="Error has occurred, check if u have saved the annotations",
+            self.dialog = MDDialog(title="Please ensure you have selected the annotation by clicking on it",
                                    type="custom",
                                    buttons=[confirm_button])
         self.dialog.open()
+
 
     @staticmethod
     def display_top(snapshot, key_type='lineno', limit=3):

@@ -1,7 +1,5 @@
 from kivy.config import Config
 from kivy.uix.image import Image
-from kivymd.uix.floatlayout import MDFloatLayout
-from pprint import pprint
 from annotator.annotation_component import BoundingBox, AnnotationGraphic, Corner, IDraggable, IResizable
 from annotator.annotation_event import *
 
@@ -59,11 +57,17 @@ class AnnotationCanvas(Image):
                         if self.selected_annotation is not None:
                             # Unselect current selected annotation
                             self.selected_annotation.display_resize_hint(False)
-                            self.selected_annotation.change_color((0, 1, 0, 0.7))
+                            if self.selected_annotation.verified:
+                                self.selected_annotation.change_color((0, 1, 0, 0.7))
+                            else:
+                                self.selected_annotation.change_color((0, 255, 215, 0.7))
                         self.mode = self.MODE_DRAG_ANNOTATION
                         self.selected_annotation = annotation
                         self.selected_annotation.display_resize_hint(True)
-                        self.selected_annotation.change_color((0, 1, 0, 1))
+                        if self.selected_annotation.verified:
+                            self.selected_annotation.change_color((0, 255, 215, 1))
+                        else:
+                            self.selected_annotation.change_color((0, 1, 0, 1))
                         self.selected_annotation.counter = self.counter
                         break
 
@@ -155,6 +159,8 @@ class AnnotationCanvas(Image):
                         if len(self.all_annotations[frame]) == 0:
                             del self.all_annotations[frame]
             self.remove_annotation(self.selected_annotation)
+            return True
+        return False
 
     def remove_annotation(self, annotation):
         if annotation:
@@ -173,6 +179,8 @@ class AnnotationCanvas(Image):
 
     def create_annotation_graphics(self, annotation, current_frame):
         self.frame = current_frame
+        if annotation.verified:
+            annotation.color = (0, 255, 215, 1)
         annotation.redraw()
         self.post_event(AnnotationCreatedEvent(annotation=annotation))
         self.annotations.append(annotation)
@@ -196,6 +204,7 @@ class AnnotationCanvas(Image):
         return annotation_graphic
 
     def create_annotation_from_file(self, annotations):
+        self.all_annotations.clear()
         for frame in annotations:
             for annotation in annotations[frame]:
                 annotation_graphic = AnnotationGraphic(
@@ -205,19 +214,9 @@ class AnnotationCanvas(Image):
                     verified=annotation[2],
                     n_id=annotation[3],
                     counter=0,
-                    bounding_box=(annotation[1][0], annotation[1][1], annotation[1][2], annotation[1][3]),
-                    color=(0, 1, 0, 1)
+                    bounding_box=(annotation[1][0], annotation[1][1], annotation[1][2], annotation[1][3])
                 )
                 if frame in self.all_annotations:
                     self.all_annotations[frame].append(annotation_graphic)
                 else:
                     self.all_annotations[frame] = [annotation_graphic]
-
-    # TODO: DEL
-    # @staticmethod
-    # def convert_annotation_graphic_to_annotation(annotation):
-    #     bbox = [annotation.min_x, annotation.min_y, annotation.max_x, annotation.max_y]
-    #     label = annotation.name
-    #     converted_annotation = [label, bbox, False]
-    #     print(converted_annotation)
-    #     return converted_annotation

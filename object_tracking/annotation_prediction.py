@@ -62,12 +62,6 @@ class AnnotationPrediction:
         annotation_frame_counter = 0
 
         while True:
-            # Go to next frame
-            # current_frame += self.vid_frame_per_annotation_frame
-            # if current_frame >= self.vid_frame_length:
-            #     break
-            # self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, current_frame)
-
             # Parsing video
             has_frames, img = self.vid_cap.read()
             if not has_frames:

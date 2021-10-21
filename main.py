@@ -88,8 +88,6 @@ class VideoAnnotatorApp(MDApp):
             self.video_annotator = VideoAnnotator()
             self.root.ids.annotator_screen.add_widget(self.video_annotator)
         print(self.root.ids.annotator_screen)
-        # self.root.ids.annotator_screen.clear_widgets()
-        # self.root.ids.annotator_screen.add_widget(self.video_annotator)
 
         if self.filepath:
             self.video_annotator.clear_all()
