@@ -52,6 +52,7 @@ class VideoAnnotator(MDGridLayout):
     clock = None
     label = 'Smoking'
     dialog = None
+    label_dialog = None
     object_tracking_mode = True
 
     def __init__(self, **kwargs):
@@ -514,18 +515,21 @@ class VideoAnnotator(MDGridLayout):
             # self.display_top(snapshot)
 
     def add_label(self):
-        close_button = MDFlatButton(text='Close', on_release=self.close_dialog)
+        close_button = MDFlatButton(text='Close', on_release=self.close_label_dialog)
         confirm_button = MDFlatButton(text="Confirm", on_release=self.confirm_label)
-        if self.dialog is None:
-            self.dialog = MDDialog(title="Create a new label",
+        if self.label_dialog is None:
+            self.label_dialog = MDDialog(title="Create a new label",
                                    type="custom",
                                    content_cls=self.label_text_field,
                                    buttons=[close_button, confirm_button])
-        self.dialog.open()
+        self.label_dialog.open()
 
     def close_dialog(self, obj):
         self.dialog.dismiss()
         self.dialog = None
+
+    def close_label_dialog(self, obj):
+        self.label_dialog.dismiss()
 
     def confirm_label(self, obj):
         self.label = self.dialog.content_cls.text
@@ -559,7 +563,7 @@ class VideoAnnotator(MDGridLayout):
         self.dialog.open()
 
     def unverify_frame(self):
-        confirm_button = MDFlatButton(text="Okay", on_release=self.close_dialog) 
+        confirm_button = MDFlatButton(text="Okay", on_release=self.close_dialog)
         if self.annotation_file is not None and self.annotation_file.unverify_all():
             self.dialog = MDDialog(title="All frames are now unverified",
                                    type="custom",
