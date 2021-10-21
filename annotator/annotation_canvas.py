@@ -145,6 +145,17 @@ class AnnotationCanvas(Image):
                     del self.all_annotations[self.frame]
             self.remove_annotation(self.selected_annotation)
 
+    def remove_associated_frames(self):
+        if self.selected_annotation:
+            all_annotations = self.all_annotations.copy()
+            for frame, value in all_annotations.items():
+                for annotation in value:
+                    if self.selected_annotation.n_id == annotation.n_id:
+                        self.all_annotations[frame].remove(annotation)
+                        if len(self.all_annotations[frame]) == 0:
+                            del self.all_annotations[frame]
+            self.remove_annotation(self.selected_annotation)
+
     def remove_annotation(self, annotation):
         if annotation:
             annotation.remove_graphic()

@@ -475,6 +475,8 @@ class VideoAnnotator(MDGridLayout):
                     self.save_annotations()
                 elif 'ctrl' in modifier and codepoint == 't':
                     self.verify_frame()
+                elif 'ctrl' in modifier and codepoint == 'd':
+                    self.annotation_canvas.remove_associated_frames()
                 elif key == 113 or key == 276:
                     # Q or Left Arrow
                     self.on_press_back_button()
