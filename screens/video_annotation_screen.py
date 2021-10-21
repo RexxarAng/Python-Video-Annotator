@@ -298,8 +298,8 @@ class VideoAnnotator(MDGridLayout):
             self.vid_current_frame = video_frame
             has_changed_annotator_frame = abs(self.time_slider.value -
                                               self.convert_video_frame_to_annotator_frame(video_frame)) >= 1
+            self.check_and_draw_annotation()
             if has_changed_annotator_frame:
-                self.check_and_draw_annotation()
                 self.time_slider.value = self.convert_video_frame_to_annotator_frame(video_frame)
             return True
         return False
@@ -307,6 +307,8 @@ class VideoAnnotator(MDGridLayout):
     def play_video(self):
         self.video_playback = VideoPlayBackMode.Playing
         self.time_control_play_button.icon = 'stop'
+        if self.clock is not None:
+            self.clock.cancel()
         self.clock = Clock.schedule_interval(self.playing, 1.0 / self.vid_fps / self.play_speed)
 
     def playing(self, *args):
@@ -317,12 +319,12 @@ class VideoAnnotator(MDGridLayout):
         self.video_playback = VideoPlayBackMode.Stopped
         self.time_control_play_button.icon = 'play'
         if self.clock is not None:
-            self.clock.release()
+            self.clock.cancel()
             self.clock = None
 
     def stop(self):
         if self.clock is not None:
-            self.clock.release()
+            self.clock.cancel()
             self.clock = None
             self.annotation_canvas.remove_all_annotations()
 
