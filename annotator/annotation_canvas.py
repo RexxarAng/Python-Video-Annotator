@@ -41,7 +41,7 @@ class AnnotationCanvas(Image):
         print(size)
 
     def on_touch_down(self, touch):
-        print(touch)
+        print('canvas - on_touch_down', touch)
         self.initial_mouse_down_pos = (touch.x, touch.y)
 
         with self.canvas:
@@ -111,7 +111,7 @@ class AnnotationCanvas(Image):
         self.previous_mouse_pos = (touch.x, touch.y)
 
     def on_touch_up(self, touch):
-        print('released mouse', touch)
+        print('canvas - on_touch_up', touch)
         print(self.annotations)
         if self.selected_annotation:
             self.selected_annotation.reset_min_max()

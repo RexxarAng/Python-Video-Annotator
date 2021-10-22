@@ -280,7 +280,16 @@ class VideoAnnotator(MDGridLayout):
                 print(self.annotation_canvas.all_annotations)
 
                 # TODO: To implement scaling on scatter_canvas to follow window size
-                self.scatter_canvas._set_scale(.5)
+                # print("scatter size:", self.scatter_canvas.size)
+                # print("scatter position:", self.scatter_canvas.pos)
+                # print("scatter content size", self.scatter_canvas.content.size)
+                # print("scatter content position:", self.scatter_canvas.content.pos)
+                # print("annotation canvas size:", self.annotation_canvas.size)
+                # print("annotation position:", self.annotation_canvas.pos)
+                self.scatter_canvas._set_scale(.60)
+                self.scatter_canvas.pos = (0, 120)
+                self.scatter_canvas.size_hint = None, None
+                self.scatter_canvas.size = dp(self.vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH)), dp(self.vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
     def set_vid_frame_length(self, video_frame):
         self.vid_frame_length = video_frame
