@@ -10,7 +10,9 @@ import os
 from testing.video_manager import VideoManager
 from screens.video_annotation_screen import VideoAnnotator
 from kivy.core.window import Window
-Window.size = (1000, 800)
+Config.set('graphics', 'width', '1200')
+Config.set('graphics', 'height', '800')
+Config.write()
 
 
 class NavigationLayout:

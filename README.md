@@ -66,8 +66,20 @@ Unverify annotations
 ## Shortcut keys
 'ctrl-a' - Annotation mode: To start drawing annotations
 
+'ctrl-m' - Switch Annotation modes: Object Tracking or manual
+
+'ctrl-l' - Triggers popup dialog for creating new label
+
 'ctrl-s' - Save all annotations created into an xml file in the same file location as the video file
 
 'ctrl-t' - Verify all annotations created till current frame, also saves all annotations made into xml file
 
 'ctrl-d' - Delete all associated annotations created
+
+'del' - Delete selected annotation
+
+'space-bar' - Play/Pause Video
+
+'q or left-arrow' - Go back 5 frames
+
+'e or right-arrow' - Go forward 5 frames

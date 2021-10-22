@@ -120,17 +120,24 @@ class VideoAnnotator(MDGridLayout):
         self.bottom_layout.add_widget(self.time_control_layout)
 
         self.toggle_mode_button = IconButtonTooltips(icon='toggle-switch',
-                                                     tooltip_text='Toggle to switch off object tracking',
+                                                     tooltip_text='Toggle to switch off object tracking (ctrl-m)',
                                                      md_bg_color=[.8, .8, .8, 1],
                                                      user_font_size=20)
 
         self.toggle_mode_button.on_press = self.on_toggle_mode
 
         self.add_label_button = IconButtonTooltips(icon='label',
-                                                   tooltip_text='Add new label',
+                                                   tooltip_text='Add new label (ctrl-l)',
                                                    md_bg_color=[.8, .8, .8, 1],
                                                    user_font_size=20)
         self.add_label_button.on_press = self.add_label
+
+        self.create_annotation_button = IconButtonTooltips(icon='brush',
+                                                           tooltip_text='Create new annotation (ctrl-a)',
+                                                           md_bg_color=[.8, .8, .8, 1],
+                                                           user_font_size=20)
+
+        self.create_annotation_button.on_press = self.on_create_annotation
 
         self.label_text_field = MDTextField(
             hint_text="Enter a new label",
@@ -151,7 +158,7 @@ class VideoAnnotator(MDGridLayout):
 
         self.unverify_button = IconButtonTooltips(
             icon='close',
-            tooltip_text='Un-verify all frames',
+            tooltip_text='Un-verify all frames (ctrl-u)',
             md_bg_color=[.8, .8, .8, 1],
             user_font_size=20
         )
@@ -194,6 +201,7 @@ class VideoAnnotator(MDGridLayout):
 
         self.bottom_features_layout.add_widget(self.toggle_mode_button)
         self.bottom_features_layout.add_widget(self.add_label_button)
+        self.bottom_features_layout.add_widget(self.create_annotation_button)
         self.bottom_features_layout.add_widget(self.delete_annotation_button)
         self.bottom_features_layout.add_widget(self.delete_associated_annotations_button)
         self.bottom_features_layout.add_widget(self.save_annotations_button)
@@ -201,22 +209,25 @@ class VideoAnnotator(MDGridLayout):
         self.bottom_features_layout.add_widget(self.unverify_button)
         self.bottom_layout.add_widget(self.bottom_features_layout)
         self.time_layout.add_widget(self.bottom_layout)
-        self.time_control_go_back_button = MDIconButton(
+        self.time_control_go_back_button = IconButtonTooltips(
             icon='skip-backward',
+            tooltip_text='Go back 5 frames (q or left-arrow)',
             md_bg_color=[.8, .8, .8, 1],
             user_font_size=20
         )
         self.time_control_go_back_button.on_press = self.on_press_back_button
         self.time_control_layout.add_widget(self.time_control_go_back_button)
-        self.time_control_play_button = MDIconButton(
+        self.time_control_play_button = IconButtonTooltips(
             icon='play',
+            tooltip_text='Pause (space-bar)',
             md_bg_color=[.8, .8, .8, 1],
             user_font_size=20
         )
         self.time_control_play_button.on_press = self.on_mouse_down_play_button
 
-        self.time_control_go_next_button = MDIconButton(
+        self.time_control_go_next_button = IconButtonTooltips(
             icon='skip-forward',
+            tooltip_text='Go forward 5 frames (e or right-arrow)',
             md_bg_color=[.8, .8, .8, 1],
             user_font_size=20
         )
@@ -274,11 +285,13 @@ class VideoAnnotator(MDGridLayout):
         if self.object_tracking_mode:
             self.object_tracking_mode = False
             self.toggle_mode_button.icon = 'toggle-switch-outline'
-            self.toggle_mode_button.tooltip_text = "Toggle to switch on object tracking"
+            self.toggle_mode_button.tooltip_text = "Toggle to switch on object tracking (ctrl-m)"
+            toast("Mode switched to Manual")
         else:
             self.object_tracking_mode = True
             self.toggle_mode_button.icon = 'toggle-switch'
-            self.toggle_mode_button.tooltip_text = "Toggle to switch off object tracking"
+            self.toggle_mode_button.tooltip_text = "Toggle to switch off object tracking (ctrl-m)"
+            toast("Mode switched to Object Tracking")
 
     def on_window_resize(self, context, width, height):
         Clock.schedule_once(self.adjust_annotation_size_pos, 0.05)
@@ -369,6 +382,7 @@ class VideoAnnotator(MDGridLayout):
     def play_video(self):
         self.video_playback = VideoPlayBackMode.Playing
         self.time_control_play_button.icon = 'stop'
+        self.time_control_play_button.tooltip_text = 'pause (space-bar)'
         if self.clock is not None:
             self.clock.cancel()
         self.clock = Clock.schedule_interval(self.playing, 1.0 / self.vid_fps / self.play_speed)
@@ -380,6 +394,7 @@ class VideoAnnotator(MDGridLayout):
     def stop_video(self):
         self.video_playback = VideoPlayBackMode.Stopped
         self.time_control_play_button.icon = 'play'
+        self.time_control_play_button.tooltip_text = 'play (space-bar)'
         if self.clock is not None:
             self.clock.cancel()
             self.clock = None
@@ -502,8 +517,6 @@ class VideoAnnotator(MDGridLayout):
             key_frame.append(annotation_graphic)
         toast('Object Tracking is completed')
 
-        # self.play_video()
-
     def on_press_next_button(self):
         self.move_annotator_frame_by_delta(1)
 
@@ -531,19 +544,19 @@ class VideoAnnotator(MDGridLayout):
                 if 'ctrl' in modifier and codepoint == 'z':
                     self.annotation_canvas.remove_annotation_at_index(len(self.annotation_canvas.annotations) - 1)
                 elif 'ctrl' in modifier and codepoint == 'a':
-                    if len(self.annotation_canvas.annotations) < 2:
-                        Window.set_system_cursor('crosshair')
-                        rounded_to_annotation_frame = self.annotator_fps * round(self.vid_current_frame/self.annotator_fps)
-                        self.annotation_canvas.set_mode_create_annotation(self.label, rounded_to_annotation_frame)
-                    else:
-                        toast("Only maximum of two annotations can be made")
-
+                    self.on_create_annotation()
                 elif 'ctrl' in modifier and codepoint == 's':
                     self.on_save_annotations()
                 elif 'ctrl' in modifier and codepoint == 't':
                     self.on_verify_frame()
                 elif 'ctrl' in modifier and codepoint == 'd':
                     self.on_remove_all_associated_frames()
+                elif 'ctrl' in modifier and codepoint == 'u':
+                    self.on_unverify_frame()
+                elif 'ctrl' in modifier and codepoint == 'm':
+                    self.on_toggle_mode()
+                elif 'ctrl' in modifier and codepoint == 'l':
+                    self.add_label()
                 elif key == 113 or key == 276:
                     # Q or Left Arrow
                     self.on_press_back_button()
@@ -553,7 +566,6 @@ class VideoAnnotator(MDGridLayout):
                 elif key == 127 or key == 8:
                     # Delete Key
                     self.on_delete_selected_annotation()
-                    # self.annotation_canvas.remove_selected_annotation()
 
     def __draw_shadow__(self, origin, end, context=None):
         pass
@@ -606,6 +618,18 @@ class VideoAnnotator(MDGridLayout):
                                        type="custom",
                                        buttons=[confirm_button])
         self.dialog.open()
+
+    def on_create_annotation(self):
+        if self.annotation_canvas.mode == 'create_annotation':
+            Window.set_system_cursor('arrow')
+            self.annotation_canvas.mode = None
+            return
+        if len(self.annotation_canvas.annotations) < 2:
+            Window.set_system_cursor('crosshair')
+            rounded_to_annotation_frame = self.annotator_fps * round(self.vid_current_frame / self.annotator_fps)
+            self.annotation_canvas.set_mode_create_annotation(self.label, rounded_to_annotation_frame)
+        else:
+            toast("Only maximum of two annotations can be made")
 
     def add_label(self):
         close_button = MDFlatButton(text='Close', on_release=self.close_label_dialog)
@@ -696,8 +720,3 @@ class VideoAnnotator(MDGridLayout):
             toast("Selected annotation has been removed")
         else:
             toast("No annotation has been selected, please select before deleting")
-
-
-
-
-
