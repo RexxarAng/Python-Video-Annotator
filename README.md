@@ -22,11 +22,11 @@ Project is created with:
 ## Setup
 To run this project, install it locally using pip:
 
-...
+```
 $ cd ../Python-Video-Annotator
 $ pip install -r requirements.txt
 $ python main.py
-...
+```
 
 ## Features
 File Manager
@@ -65,6 +65,9 @@ Unverify annotations
 
 ## Shortcut keys
 'ctrl-a' - Annotation mode: To start drawing annotations
+
 'ctrl-s' - Save all annotations created into an xml file in the same file location as the video file
+
 'ctrl-t' - Verify all annotations created till current frame, also saves all annotations made into xml file
+
 'ctrl-d' - Delete all associated annotations created
