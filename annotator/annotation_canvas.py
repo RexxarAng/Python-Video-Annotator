@@ -58,9 +58,9 @@ class AnnotationCanvas(Image):
                             # Unselect current selected annotation
                             self.selected_annotation.display_resize_hint(False)
                             if self.selected_annotation.verified:
-                                self.selected_annotation.change_color((0, 1, 0, 0.7))
-                            else:
                                 self.selected_annotation.change_color((0, 255, 215, 0.7))
+                            else:
+                                self.selected_annotation.change_color((0, 1, 0, 0.7))
                         self.mode = self.MODE_DRAG_ANNOTATION
                         self.selected_annotation = annotation
                         self.selected_annotation.display_resize_hint(True)
@@ -68,7 +68,8 @@ class AnnotationCanvas(Image):
                             self.selected_annotation.change_color((0, 255, 215, 1))
                         else:
                             self.selected_annotation.change_color((0, 1, 0, 1))
-                        self.selected_annotation.counter = self.counter
+                        if self.selected_annotation.counter == 0:
+                            self.selected_annotation.counter = self.counter
                         break
 
             elif self.mode == self.MODE_CREATE_ANNOTATION:
@@ -79,8 +80,8 @@ class AnnotationCanvas(Image):
                     parent=self,
                     name=self.current_label,
                     frame=self.frame,
-                    counter=self.counter,
                     verified=self.verified,
+                    counter=self.counter,
                     bounding_box=(touch.x, touch.y, touch.x, touch.y),
                     color=(0, 1, 0, 1)
                 )
@@ -128,6 +129,20 @@ class AnnotationCanvas(Image):
         self.initial_mouse_down_pos = None
         self.previous_mouse_pos = None
 
+    def select_annotation(self, annotation: AnnotationGraphic):
+        if self.selected_annotation is not None:
+            self.selected_annotation.display_resize_hint(False)
+            if self.selected_annotation.verified:
+                self.selected_annotation.change_color((0, 255, 215, 0.7))
+            else:
+                self.selected_annotation.change_color((0, 1, 0, 0.7))
+        self.mode = self.MODE_DRAG_ANNOTATION
+        annotation.display_resize_hint(True)
+        annotation.reset_min_max()
+        annotation.redraw()
+        self.selected_annotation = annotation
+        self.post_event(AnnotationSelectedEvent(annotation=annotation, is_interactive=True))
+
     def set_mode_create_annotation(self, label_name, frame):
         self.frame = frame
         self.mode = self.MODE_CREATE_ANNOTATION
@@ -148,6 +163,9 @@ class AnnotationCanvas(Image):
                 if len(self.all_annotations[self.frame]) == 0:
                     del self.all_annotations[self.frame]
             self.remove_annotation(self.selected_annotation)
+            return True
+        else:
+            return False
 
     def remove_associated_frames(self):
         if self.selected_annotation:

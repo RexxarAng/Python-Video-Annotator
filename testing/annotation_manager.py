@@ -95,26 +95,6 @@ class AnnotationPrediction:
 
         self.on_complete_prediction(self.context, result)
 
-
-    # TODO: To be deleted
-    # def add_tracker(self, img, label, borderbox):
-    #     self.tracker = cv2.TrackerCSRT_create()
-    #     self.tracker.init(img, borderbox)
-    #     self.trackers[self.tracker] = label
-    #
-    # def remove_tracker(self, tracker):
-    #     self.trackers.pop(tracker)
-    #
-    # def get_tracked_img(self, img):
-    #     image_annotations = []
-    #     for tracker, label in self.trackers.items():
-    #         has_frames, bbox = tracker.update(img)
-    #         if has_frames:
-    #             bbox = LabelFile.convert_cv2_bnd_box_to_points(bbox)
-    #             annotation = [label, bbox, tracker]
-    #             image_annotations.append(annotation)
-    #     return image_annotations
-
     @staticmethod
     def convert_bounding_box_to_cv2_bnd_box(bounding_box: BoundingBox):
         x_min = bounding_box.min_x

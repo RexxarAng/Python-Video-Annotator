@@ -5,9 +5,12 @@ from kivy.properties import ObjectProperty
 from kivy.core.window import Window
 from kivymd.uix.filemanager import MDFileManager
 from kivymd.toast import toast
+from kivy.config import Config
 import os
 from testing.video_manager import VideoManager
 from screens.video_annotation_screen import VideoAnnotator
+from kivy.core.window import Window
+Window.size = (1000, 800)
 
 
 class NavigationLayout:

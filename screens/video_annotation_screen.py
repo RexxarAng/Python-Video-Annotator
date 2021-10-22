@@ -7,22 +7,21 @@ from kivymd.uix.gridlayout import MDGridLayout
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.label import MDLabel
 from kivymd.uix.list import MDList, OneLineListItem
+from kivymd.uix.relativelayout import MDRelativeLayout
 from kivymd.uix.slider import MDSlider
 from kivy.graphics.texture import Texture
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.tooltip import MDTooltip
 import cv2
+import os
 from enum import Enum
+from kivy.uix.scatterlayout import ScatterLayout
+from kivymd.toast import toast
 from annotator.annotation_canvas import (AnnotationCanvas)
 from annotator.annotation_event import *
 from label.annotation_file import AnnotationFile
 from object_tracking.annotation_prediction import AnnotationPrediction
-import os
-from kivy.uix.scatterlayout import ScatterLayout
-import tracemalloc
-import linecache
-from kivymd.toast import toast
 
 
 class IconButtonTooltips(MDIconButton, MDTooltip):
@@ -61,7 +60,7 @@ class VideoAnnotator(MDGridLayout):
         kwargs['cols'] = 2
         kwargs['md_bg_color'] = (0.141, 0.153, 0.173, 1)
         super(VideoAnnotator, self).__init__(**kwargs)
-        Window.bind(on_keyboard=self.on_keyboard)  # bind our handler
+        Window.bind(on_keyboard=self.on_keyboard, on_resize=self.on_window_resize)  # bind our handler
 
         self.video_playback = VideoPlayBackMode.Stopped
 
@@ -79,10 +78,12 @@ class VideoAnnotator(MDGridLayout):
         self.add_widget(self.side_dock)
 
         # Create Annotation Canvas
+        self.video_annotation_container = MDRelativeLayout()
         self.scatter_canvas = ScatterLayout(do_rotation=False, do_scale=False, do_translation=False)
-        self.main_layout.add_widget(self.scatter_canvas)
         self.annotation_canvas = AnnotationCanvas()
         self.scatter_canvas.add_widget(self.annotation_canvas)
+        self.video_annotation_container.add_widget(self.scatter_canvas)
+        self.main_layout.add_widget(self.video_annotation_container)
         # TODO: Remove this
         self.annotation_canvas.counter = self.counter
 
@@ -118,11 +119,13 @@ class VideoAnnotator(MDGridLayout):
         )
         self.bottom_layout.add_widget(self.time_control_layout)
 
-        # self.add_label_button = MDIconButton(
-        #     icon='label',
-        #     md_bg_color=[.8, .8, .8, 1],
-        #     user_font_size=20
-        # )
+        self.toggle_mode_button = IconButtonTooltips(icon='toggle-switch',
+                                                     tooltip_text='Toggle to switch off object tracking',
+                                                     md_bg_color=[.8, .8, .8, 1],
+                                                     user_font_size=20)
+
+        self.toggle_mode_button.on_press = self.on_toggle_mode
+
         self.add_label_button = IconButtonTooltips(icon='label',
                                                    tooltip_text='Add new label',
                                                    md_bg_color=[.8, .8, .8, 1],
@@ -139,12 +142,12 @@ class VideoAnnotator(MDGridLayout):
 
         self.verify_button = IconButtonTooltips(
             icon='check',
-            tooltip_text='Verify all past frames',
+            tooltip_text='Verify all past frames (ctrl-t)',
             md_bg_color=[.8, .8, .8, 1],
             user_font_size=20
         )
 
-        self.verify_button.on_press = self.verify_frame
+        self.verify_button.on_press = self.on_verify_frame
 
         self.unverify_button = IconButtonTooltips(
             icon='close',
@@ -153,16 +156,34 @@ class VideoAnnotator(MDGridLayout):
             user_font_size=20
         )
 
-        self.unverify_button.on_press = self.unverify_frame
+        self.unverify_button.on_press = self.on_unverify_frame
 
         self.save_annotations_button = IconButtonTooltips(
             icon='content-save',
-            tooltip_text='Save All Annotations',
+            tooltip_text='Save All Annotations (ctrl-s)',
             md_bg_color=[.8, .8, .8, 1],
             user_font_size=20
         )
 
-        self.save_annotations_button.on_press = self.save_annotations
+        self.save_annotations_button.on_press = self.on_save_annotations
+
+        self.delete_annotation_button = IconButtonTooltips(
+            icon='delete',
+            tooltip_text='Delete selected annotation (del)',
+            md_bg_color=[.8, .8, .8, 1],
+            user_font_size=20
+        )
+
+        self.delete_annotation_button.on_press = self.on_delete_selected_annotation
+
+        self.delete_associated_annotations_button = IconButtonTooltips(
+            icon='delete-sweep',
+            tooltip_text='Delete all associated annotations based on selected annotation (ctrl-d)',
+            md_bg_color=[.8, .8, .8, 1],
+            user_font_size=20
+        )
+
+        self.delete_associated_annotations_button.on_press = self.on_remove_all_associated_frames
 
         self.bottom_features_layout = MDBoxLayout(
             size_hint_y=None,
@@ -171,7 +192,10 @@ class VideoAnnotator(MDGridLayout):
             padding=[10, 10, 10, 10]
         )
 
+        self.bottom_features_layout.add_widget(self.toggle_mode_button)
         self.bottom_features_layout.add_widget(self.add_label_button)
+        self.bottom_features_layout.add_widget(self.delete_annotation_button)
+        self.bottom_features_layout.add_widget(self.delete_associated_annotations_button)
         self.bottom_features_layout.add_widget(self.save_annotations_button)
         self.bottom_features_layout.add_widget(self.verify_button)
         self.bottom_features_layout.add_widget(self.unverify_button)
@@ -246,6 +270,40 @@ class VideoAnnotator(MDGridLayout):
         self.label_scroll_view.add_widget(self.label_list)
         self.annotation_canvas.subscribe_event(self.on_annotation_canvas_event)
 
+    def on_toggle_mode(self):
+        if self.object_tracking_mode:
+            self.object_tracking_mode = False
+            self.toggle_mode_button.icon = 'toggle-switch-outline'
+            self.toggle_mode_button.tooltip_text = "Toggle to switch on object tracking"
+        else:
+            self.object_tracking_mode = True
+            self.toggle_mode_button.icon = 'toggle-switch'
+            self.toggle_mode_button.tooltip_text = "Toggle to switch off object tracking"
+
+    def on_window_resize(self, context, width, height):
+        Clock.schedule_once(self.adjust_annotation_size_pos, 0.05)
+
+    def adjust_annotation_size_pos(self, context):
+        if self.vid_cap is not None:
+            cw, ch = self.video_annotation_container.size
+            vw, vh = self.vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH), self.vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+
+            width_scale = cw / vw
+            height_scale = ch / vh
+
+            if width_scale < height_scale:
+                scale = width_scale
+                center_pos = 0, int((ch - scale * vh) / 2)
+                print('height scale', scale * vh, ch)
+            else:
+                scale = height_scale
+                center_pos = int((cw - scale * vw) / 2), 0
+                print('width scale', scale * vw, cw)
+
+            self.scatter_canvas._set_scale(scale)
+            self.scatter_canvas.pos = center_pos
+            print('scatter pos ', center_pos)
+
     def load_video(self, video_path):
         # tracemalloc.start()
         self.vid_path = video_path
@@ -279,15 +337,9 @@ class VideoAnnotator(MDGridLayout):
                 self.check_and_draw_annotation()
                 print(self.annotation_canvas.all_annotations)
 
-                # TODO: To implement scaling on scatter_canvas to follow window size
-                # print("scatter size:", self.scatter_canvas.size)
-                # print("scatter position:", self.scatter_canvas.pos)
-                # print("scatter content size", self.scatter_canvas.content.size)
-                # print("scatter content position:", self.scatter_canvas.content.pos)
-                # print("annotation canvas size:", self.annotation_canvas.size)
-                # print("annotation position:", self.annotation_canvas.pos)
-                self.scatter_canvas._set_scale(.60)
-                self.scatter_canvas.pos = (0, 120)
+                self.on_window_resize(None, None, None)
+
+                # To fix the scatter_canvas to follow the video screen size so that mouse interaction will work
                 self.scatter_canvas.size_hint = None, None
                 self.scatter_canvas.size = dp(self.vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH)), dp(self.vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
@@ -308,8 +360,8 @@ class VideoAnnotator(MDGridLayout):
             self.vid_current_frame = video_frame
             has_changed_annotator_frame = abs(self.time_slider.value -
                                               self.convert_video_frame_to_annotator_frame(video_frame)) >= 1
-            self.check_and_draw_annotation()
             if has_changed_annotator_frame:
+                self.check_and_draw_annotation()
                 self.time_slider.value = self.convert_video_frame_to_annotator_frame(video_frame)
             return True
         return False
@@ -368,6 +420,7 @@ class VideoAnnotator(MDGridLayout):
             annotation_frame = self.convert_video_frame_from_annotator_frame(self.time_slider.value)
             self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, annotation_frame)
             self.set_vid_current_frame(annotation_frame)
+            self.check_and_draw_annotation()
 
     def on_touch_down_timer_slider(self, widget, touch):
         if self.vid_cap is not None and widget.collide_point(*touch.pos):
@@ -384,7 +437,7 @@ class VideoAnnotator(MDGridLayout):
         self.stop_video()
         self.set_vid_current_frame(self.convert_video_frame_from_annotator_frame(self.time_slider.value))
 
-    def on_annotation_canvas_event(self, event):
+    def on_annotation_canvas_event(self, event: object):
         # print(event)
         if isinstance(event, AnnotationCreatedEvent):
             # if event.annotation in self.annotation_canvas.annotations:
@@ -394,10 +447,11 @@ class VideoAnnotator(MDGridLayout):
                 event.annotation.list_item = OneLineListItem(
                     text=event.annotation.name,
                     theme_text_color='Custom',
-                    text_color='#EEEEEEFF'
+                    text_color='#EEEEEEFF',
+                    on_press=lambda *args: self.set_selected_annotation(event.annotation)
                 )
-                self.annotation_list.add_widget(event.annotation.list_item)
 
+                self.annotation_list.add_widget(event.annotation.list_item)
                 # Run Prediction
                 if event.is_interactive and self.object_tracking_mode:
                     toast("Starting object tracking, please wait")
@@ -426,6 +480,9 @@ class VideoAnnotator(MDGridLayout):
                     if isinstance(list_item, OneLineListItem):
                         list_item.bg_color = (0, 0, 0, 0)
                 event.annotation.list_item.bg_color = (0, 1, 0, .5)
+
+    def set_selected_annotation(self, annotation):
+        self.annotation_canvas.select_annotation(annotation)
 
     def on_complete_prediction(self, context, result, n_id):
         print(context)
@@ -482,11 +539,11 @@ class VideoAnnotator(MDGridLayout):
                         toast("Only maximum of two annotations can be made")
 
                 elif 'ctrl' in modifier and codepoint == 's':
-                    self.save_annotations()
+                    self.on_save_annotations()
                 elif 'ctrl' in modifier and codepoint == 't':
-                    self.verify_frame()
+                    self.on_verify_frame()
                 elif 'ctrl' in modifier and codepoint == 'd':
-                    self.remove_all_associated_frames()
+                    self.on_remove_all_associated_frames()
                 elif key == 113 or key == 276:
                     # Q or Left Arrow
                     self.on_press_back_button()
@@ -495,7 +552,8 @@ class VideoAnnotator(MDGridLayout):
                     self.on_press_next_button()
                 elif key == 127 or key == 8:
                     # Delete Key
-                    self.annotation_canvas.remove_selected_annotation()
+                    self.on_delete_selected_annotation()
+                    # self.annotation_canvas.remove_selected_annotation()
 
     def __draw_shadow__(self, origin, end, context=None):
         pass
@@ -518,14 +576,14 @@ class VideoAnnotator(MDGridLayout):
                 # Check if counter for image is 0, stop displaying
 
                 if annotation.counter > 0:
+                    if annotation.counter == 1:
+                        self.stop_video()
                     annotation.counter -= 1
                     key_frame = self.annotation_canvas.all_annotations.setdefault(int(current_frame), [])
                     key_frame.append(self.annotation_canvas.create_annotation(annotation, current_frame))
-                    # self.annotation_canvas.all_annotations[current_frame] = [self.annotation_canvas.create_annotation(annotation, current_frame)]
-                    if annotation.counter == 0:
-                        self.stop_video()
+
                     previous_annotation_index = self.annotation_canvas.all_annotations[previous_frame].index(annotation)
-                    self.annotation_canvas.all_annotations[previous_frame][previous_annotation_index].counter = 0
+                    self.annotation_canvas.all_annotations[previous_frame][previous_annotation_index].counter = -1
 
     def clear_all(self):
         self.annotation_list.clear_widgets()
@@ -535,10 +593,8 @@ class VideoAnnotator(MDGridLayout):
             self.clock.cancel()
         if self.vid_cap is not None:
             self.vid_cap.release()
-            # snapshot = tracemalloc.take_snapshot()
-            # self.display_top(snapshot)
 
-    def save_annotations(self):
+    def on_save_annotations(self):
         confirm_button = MDFlatButton(text="Okay", on_release=self.close_dialog)
         if self.annotation_file is not None:
             if self.annotation_file.save_annotations(self.annotation_canvas.all_annotations):
@@ -569,7 +625,7 @@ class VideoAnnotator(MDGridLayout):
         self.label_dialog.dismiss()
 
     def confirm_label(self, obj):
-        self.label = self.dialog.content_cls.text
+        self.label = self.label_dialog.content_cls.text
         label = OneLineListItem(
             text=self.label,
             theme_text_color='Custom',
@@ -578,7 +634,7 @@ class VideoAnnotator(MDGridLayout):
             on_press=self.select_label
         )
         self.label_list.add_widget(label)
-        self.close_dialog(obj)
+        self.close_label_dialog(obj)
 
     def select_label(self, obj):
         self.label = obj.text
@@ -587,13 +643,14 @@ class VideoAnnotator(MDGridLayout):
                 list_item.bg_color = (0, 0, 0, 0)
             obj.bg_color = (0, 1, 0, .5)
 
-    def verify_frame(self):
+    def on_verify_frame(self):
         confirm_button = MDFlatButton(text="Okay", on_release=self.close_dialog)
         if self.annotation_file is not None:
             self.annotation_file.save_annotations(self.annotation_canvas.all_annotations)
             if self.annotation_file.verify_till_frame(self.vid_current_frame):
                 self.annotation_canvas.create_annotation_from_file(
                     self.annotation_file.load_pascal_xml_by_filename(self.xml_path))
+                self.check_and_draw_annotation()
                 self.dialog = MDDialog(title="All frames before current frame are verified",
                                        type="custom",
                                        buttons=[confirm_button])
@@ -603,13 +660,14 @@ class VideoAnnotator(MDGridLayout):
                                        buttons=[confirm_button])
         self.dialog.open()
 
-    def unverify_frame(self):
+    def on_unverify_frame(self):
         confirm_button = MDFlatButton(text="Okay", on_release=self.close_dialog)
         if self.annotation_file is not None:
             self.annotation_file.save_annotations(self.annotation_canvas.all_annotations)
             if self.annotation_file.unverify_all():
                 self.annotation_canvas.create_annotation_from_file(
                     self.annotation_file.load_pascal_xml_by_filename(self.xml_path))
+                self.check_and_draw_annotation()
                 self.dialog = MDDialog(title="All frames are now unverified",
                                        type="custom",
                                        buttons=[confirm_button])
@@ -619,44 +677,27 @@ class VideoAnnotator(MDGridLayout):
                                        buttons=[confirm_button])
         self.dialog.open()
 
-    def remove_all_associated_frames(self):
-        confirm_button = MDFlatButton(text="Okay", on_release=self.close_dialog)
+    def on_remove_all_associated_frames(self):
+        # confirm_button = MDFlatButton(text="Okay", on_release=self.close_dialog)
         if self.annotation_canvas.remove_associated_frames():
-            self.dialog = MDDialog(title="All associated frames to the selected frame has been removed",
-                                   type="custom",
-                                   buttons=[confirm_button])
+            toast("All associated frames to the selected frame has been removed",)
+            # self.dialog = MDDialog(title="All associated frames to the selected frame has been removed",
+            #                        type="custom",
+            #                        buttons=[confirm_button])
         else:
-            self.dialog = MDDialog(title="Please ensure you have selected the annotation by clicking on it",
-                                   type="custom",
-                                   buttons=[confirm_button])
-        self.dialog.open()
+            # self.dialog = MDDialog(title="Please ensure you have selected the annotation by clicking on it",
+            #                        type="custom",
+            #                        buttons=[confirm_button])
+            toast("Please ensure you have selected the annotation by clicking on it")
+        # self.dialog.open()
+
+    def on_delete_selected_annotation(self):
+        if self.annotation_canvas.remove_selected_annotation():
+            toast("Selected annotation has been removed")
+        else:
+            toast("No annotation has been selected, please select before deleting")
 
 
-    @staticmethod
-    def display_top(snapshot, key_type='lineno', limit=3):
-        snapshot = snapshot.filter_traces((
-            tracemalloc.Filter(False, "<frozen importlib._bootstrap>"),
-            tracemalloc.Filter(False, "<unknown>"),
-        ))
-        top_stats = snapshot.statistics(key_type)
-
-        print("Top %s lines" % limit)
-        for index, stat in enumerate(top_stats[:limit], 1):
-            frame = stat.traceback[0]
-            # replace "/path/to/module/file.py" with "module/file.py"
-            filename = os.sep.join(frame.filename.split(os.sep)[-2:])
-            print("#%s: %s:%s: %.1f KiB"
-                  % (index, filename, frame.lineno, stat.size / 1024))
-            line = linecache.getline(frame.filename, frame.lineno).strip()
-            if line:
-                print('    %s' % line)
-
-        other = top_stats[limit:]
-        if other:
-            size = sum(stat.size for stat in other)
-            print("%s other: %.1f KiB" % (len(other), size / 1024))
-        total = sum(stat.size for stat in top_stats)
-        print("Total allocated size: %.1f KiB" % (total / 1024))
 
 
 

@@ -20,13 +20,6 @@
                     app.file_manager_open()
                 IconLeftWidget:
                     icon: "video"
-            OneLineAvatarListItem:
-                text: "Verify"
-                on_press:
-                    root.nav_drawer.set_state("close")
-                    root.screen_manager.current = "Verify"
-                IconLeftWidget:
-                    icon: "video"
 
 MDBoxLayout:
     orientation: "vertical"
@@ -75,16 +68,11 @@ MDBoxLayout:
                         size_hint: .9, .05
                         text: str(slider.value)
 
-            Screen:
-                id: verify_page
-                name: "Verify"
-                MDLabel:
-                    text: "Verify Page"
-                    font_size: 32
-                    halign: "center"
-
         MDNavigationDrawer:
             id: nav_drawer
+            swipe_edge_width: 0
+            elevation: 0
+
             ContentNavigationDrawer:
                 screen_manager: screen_manager
                 nav_drawer: nav_drawer
