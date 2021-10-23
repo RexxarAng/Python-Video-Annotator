@@ -48,6 +48,7 @@ class VideoAnnotator(MDGridLayout):
     vid_fps = 29
     play_speed = 1
     annotator_fps = 5  # video fps must be divisible by this
+    prediction_frames = 25
     counter = 10
     img = None
     clock = None
@@ -465,22 +466,23 @@ class VideoAnnotator(MDGridLayout):
                     text_color='#EEEEEEFF',
                     on_press=lambda *args: self.set_selected_annotation(event.annotation)
                 )
-
                 self.annotation_list.add_widget(event.annotation.list_item)
                 # Run Prediction
                 if event.is_interactive and self.object_tracking_mode:
-                    toast("Starting object tracking, please wait")
                     prediction = AnnotationPrediction()
                     prediction.on_complete_prediction = self.on_complete_prediction
-                    prediction.start(
+                    if prediction.start(
                         event.annotation,
                         self.vid_path,
                         event.annotation,
                         self.get_current_annotation_frame(),
                         self.get_annotation_interval(),
-                        50,
+                        self.prediction_frames,
                         event.annotation.n_id
-                    )
+                    ):
+                        toast("Object tracking in progress. Please wait")
+                    else:
+                        toast("Ensure you have drawn the annotation correctly. Please delete and re-draw the annotation")
 
         elif isinstance(event, AnnotationDeletedEvent):
             if hasattr(event.annotation, 'list_item'):
@@ -508,7 +510,7 @@ class VideoAnnotator(MDGridLayout):
                 parent=self.annotation_canvas,
                 name=context.name,
                 frame=int(key),
-                counter=self.counter,
+                counter=-1,
                 verified=False,
                 n_id=n_id,
                 bounding_box=(value.min_x, value.min_y, value.max_x, value.max_y),
@@ -590,10 +592,14 @@ class VideoAnnotator(MDGridLayout):
                 if annotation.counter > 0:
                     if annotation.counter == 1:
                         self.stop_video()
+                        toast("Video paused, adjust or click on annotation for it to continue annotating")
                     annotation.counter -= 1
                     key_frame = self.annotation_canvas.all_annotations.setdefault(int(current_frame), [])
                     key_frame.append(self.annotation_canvas.create_annotation(annotation, current_frame))
 
+                    previous_annotation_index = self.annotation_canvas.all_annotations[previous_frame].index(annotation)
+                    self.annotation_canvas.all_annotations[previous_frame][previous_annotation_index].counter = -1
+                elif annotation.counter != -1:
                     previous_annotation_index = self.annotation_canvas.all_annotations[previous_frame].index(annotation)
                     self.annotation_canvas.all_annotations[previous_frame][previous_annotation_index].counter = -1
 

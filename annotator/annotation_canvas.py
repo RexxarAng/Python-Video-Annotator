@@ -231,7 +231,7 @@ class AnnotationCanvas(Image):
                     frame=self.frame,
                     verified=annotation[2],
                     n_id=annotation[3],
-                    counter=0,
+                    counter=-1,
                     bounding_box=(annotation[1][0], annotation[1][1], annotation[1][2], annotation[1][3])
                 )
                 if frame in self.all_annotations:

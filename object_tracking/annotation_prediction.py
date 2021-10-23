@@ -26,6 +26,8 @@ class AnnotationPrediction:
               frame_limit: int,
               n_id: str):
         cv2_bounding_box = self.convert_bounding_box_to_cv2_bnd_box(bounding_box)
+        if cv2_bounding_box[2] == 0 or cv2_bounding_box[3] == 0:
+            return False
         self.context = context
         self.vid_start_frame = vid_start_frame
         self.vid_frame_per_annotation_frame = vid_frame_per_annotation_frame
@@ -39,19 +41,17 @@ class AnnotationPrediction:
 
         # Run on separate thread
         Thread(target=self._start_tracking, args=()).start()
-        return self
+        return True
 
     def on_complete_prediction(self, context, result, n_id):
         pass
 
     def _create_tracker(self, cv2_bounding_box):
-        # self.tracker = cv2.TrackerCSRT_create()
         self.tracker = cv2.TrackerKCF_create()
         if self.vid_cap.isOpened():
             has_frames, img = self.vid_cap.read()
             if has_frames:
                 self.tracker.init(img, cv2_bounding_box)
-                # self.tracker.init(img, (10, 10, 10, 10))
 
     def _start_tracking(self):
         if self.vid_cap is None or not self.vid_cap.isOpened():
