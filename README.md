@@ -36,14 +36,18 @@ Video playback
 - Enable a video read to be played in a sequence of frames for annotations or reviewing annotations
 
 Modes to create annotation
-- Object tracking mode: for the next ten seconds of video frames using object tracking upon annotation drawn
-- Manual mode:  where the annotation drawn will be repeatedly drawn at the same location for the next two seconds and paused for the user to interact with the annotation for it to continue drawing the annotation or stop the repetition if no interaction is made.
+- Object tracking mode:  Annotations will be drawn automatically for the next five seconds of video frames using object tracking.
+- Manual mode: Annotations will be drawn for two seconds. When the video is resumed, it will automatically pause at the last frame drawn and you can choose to click or edit your annotation for it to continue drawing the same area for another two seconds, or press play to stop drawing and proceed with the video.
 
 Annotation tab
 - Displays all annotations created in the current frames
 - Selecting the annotation, highlights the annotation for further action such as deletion or adjustment
 
-Add other labels
+Label tab
+- Displays all the labels
+- Selecting the label, changes the label for the annotation created
+
+Create new labels
 - Default label is 'Smoking'
 
 Save annotations into xml file
@@ -53,11 +57,12 @@ Delete annotations
 - Two different modes of deletion:
   - Delete selected annotation: Remove only the selected annotations
   - Delete associated annotations based on selected annotation:
-    - if called on a frame annotated using object tracking mode, all annotations made by the object tracker would be deleted. For manual mode, all annotations which were repeatedly drawn at the same location would be deleted.
+    - For object tracking mode, all annotations made by the object tracker would be deleted.
+    - For manual mode, all annotations which were repeatedly drawn at the same location would be deleted.
 
 Verify annotations
 - Saves all annotations created and verifies all annotations including current frame into the xml File
-- All annotations verified will have a different color
+- All annotations verified will have a different color bounding box
 
 Unverify annotations
 - Save all annotations and unverify all annotations made into the xml file

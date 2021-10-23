@@ -1,6 +1,5 @@
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'label'))
 from label.pascal_voc_io import PascalVocReader
 
 
@@ -34,6 +33,7 @@ def calculate_score(value1: list, value2: list):
 
 if len(sys.argv) == 3:
     if os.path.isfile(sys.argv[1]) and os.path.isfile(sys.argv[2]):
+        filename1, filename2 = os.path.basename(sys.argv[1]), os.path.basename(sys.argv[2])
         t_voc_parse_reader1 = PascalVocReader(sys.argv[1])
         dict1 = t_voc_parse_reader1.get_annotations()
         t_voc_parse_reader2 = PascalVocReader(sys.argv[2])
@@ -66,8 +66,8 @@ if len(sys.argv) == 3:
                 i = next(d1_iter, None)
                 j = next(d2_iter, None)
 
-        print("First file has a total of", len(dict1), "annotations")
-        print("Second file has a total of", len(dict2), "annotations")
+        print(filename1, "has a total of", len(dict1), "annotations")
+        print(filename2, "has a total of", len(dict2), "annotations")
         print("Interannotator agreement score:", score / counter)
     else:
         print("Invalid file")
