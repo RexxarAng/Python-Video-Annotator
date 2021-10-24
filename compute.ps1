@@ -8,9 +8,8 @@ $output_table = @()
 Get-ChildItem ./person1/ -Filter "*.xml" | ForEach-Object {
     # Check if file exists
     If (Test-Path "$dir2/$($_.Name)") {
-        #$(Write-Output "$dir1$($.Name) $dir2$($.Name)") # replace Write-Output to python script
+        # Run interannotator.py on both xml files with same name from dir1 and dir2
         $current_score = $(python $script_path "$dir1$($_.Name)" "$dir2$($_.Name)")
-#         Write-Output "$($_.Name) : $current_score"
 
         $properties = @{
             Filename = $($_.Name)
