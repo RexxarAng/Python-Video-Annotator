@@ -16,7 +16,6 @@
                 text: "Open Video"
                 on_press:
                     root.nav_drawer.set_state("close")
-                    root.screen_manager.current = "Video"
                     app.file_manager_open()
                 IconLeftWidget:
                     icon: "video"
@@ -40,33 +39,6 @@ MDBoxLayout:
             Screen:
                 id: annotator_screen
                 name: "Annotator"
-
-            Screen:
-                id: video
-                name: "Video"
-                MDBoxLayout:
-                    orientation: "vertical"
-
-                    MDBoxLayout:
-                        md_bg_color: rgba('#adadad')
-                        orientation: "horizontal"
-                        size_hint: 1, .1
-                        MDIconButton:
-                            font_size: 48
-                            icon: "pencil"
-
-                    Image:
-                        id: image
-                        size_hint: .8, 1
-
-                    Slider:
-                        id: slider
-                        orientation: 'horizontal'
-                        step: 1
-                        size_hint: .9, .05
-                    Label:
-                        size_hint: .9, .05
-                        text: str(slider.value)
 
         MDNavigationDrawer:
             id: nav_drawer

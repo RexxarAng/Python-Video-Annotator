@@ -84,9 +84,9 @@ class VideoAnnotatorApp(MDApp):
                 self.file_manager.back()
         return True
 
-    def open_video(self):
-        self.video_manager = VideoManager(context=self, filepath=self.filepath)
-        self.video_manager.start()
+    # def open_video(self):
+    #     self.video_manager = VideoManager(context=self, filepath=self.filepath)
+    #     self.video_manager.start()
 
     def open_annotator(self):
         if self.video_annotator is None:
