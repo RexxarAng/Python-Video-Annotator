@@ -38,12 +38,10 @@ class AnnotationCanvas(Image):
 
     def update_size(self, instance, size):
         self.g1.redraw()
-        print(size)
 
     def on_touch_down(self, touch):
         print('canvas - on_touch_down', touch)
         self.initial_mouse_down_pos = (touch.x, touch.y)
-
         with self.canvas:
             if self.mode is None:
                 if self.selected_annotation:
@@ -58,16 +56,16 @@ class AnnotationCanvas(Image):
                             # Unselect current selected annotation
                             self.selected_annotation.display_resize_hint(False)
                             if self.selected_annotation.verified:
-                                self.selected_annotation.change_color((0, 255, 215, 0.7))
+                                 self.selected_annotation.change_color((0, 255, 215, 0.7))
                             else:
-                                self.selected_annotation.change_color((0, 1, 0, 0.7))
+                                self.selected_annotation.change_color((1, 0, 0))
                         self.mode = self.MODE_DRAG_ANNOTATION
                         self.selected_annotation = annotation
                         self.selected_annotation.display_resize_hint(True)
                         if self.selected_annotation.verified:
                             self.selected_annotation.change_color((0, 255, 215, 1))
                         else:
-                            self.selected_annotation.change_color((0, 1, 0, 1))
+                            self.selected_annotation.change_color((1, 0, 0))
                         if self.selected_annotation.counter == 0:
                             self.selected_annotation.counter = self.counter
                         break
@@ -75,7 +73,7 @@ class AnnotationCanvas(Image):
             elif self.mode == self.MODE_CREATE_ANNOTATION:
                 if self.selected_annotation is not None:
                     self.selected_annotation.display_resize_hint(False)
-                    self.selected_annotation.change_color((0, 1, 0, 0.7))
+                    self.selected_annotation.change_color((1, 0, 0))
                 self.selected_annotation = AnnotationGraphic(
                     parent=self,
                     name=self.current_label,
@@ -83,7 +81,7 @@ class AnnotationCanvas(Image):
                     verified=self.verified,
                     counter=self.counter,
                     bounding_box=(touch.x, touch.y, touch.x, touch.y),
-                    color=(0, 1, 0, 1)
+                    color=(1, 0, 0)
                 )
                 self.selected_annotation.display_resize_hint(True)
                 self.selected_annotation.redraw()
@@ -150,7 +148,6 @@ class AnnotationCanvas(Image):
 
     def remove_annotation_at_index(self, index):
         if index >= len(self.annotations) or index < 0:
-            print('cannot remove')
             return
 
         annotation_to_remove = self.annotations[index]
@@ -189,10 +186,8 @@ class AnnotationCanvas(Image):
                 self.selected_annotation = None
 
     def remove_all_annotations(self):
-        print(self.annotations)
         # Remove in reverse order, to prevent missing out items in the list
         for annotation in reversed(self.annotations):
-            print('Clearing annotations')
             self.remove_annotation(annotation)
 
     def create_annotation_graphics(self, annotation, current_frame):

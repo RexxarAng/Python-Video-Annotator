@@ -68,10 +68,10 @@ class AnnotationPrediction:
                 break
 
             current_frame = self.vid_cap.get(cv2.CAP_PROP_POS_FRAMES)
-            print('prediction ', current_frame)
+            # print('prediction ', current_frame)
             if current_frame % self.vid_frame_per_annotation_frame != 0:
                 continue
-            print('predicting')
+            # print('predicting')
 
             annotation_frame_counter += 1
             if annotation_frame_counter >= self.prediction_frame_limit:

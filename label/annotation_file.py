@@ -12,10 +12,7 @@ class AnnotationFile:
         self.filename = os.path.splitext(self.filepath)[0]
 
     def save_annotations(self, annotations):
-        print("try saving")
         image_annotations = {}
-        print("input")
-        print(annotations)
         for frame in annotations:
             for i in annotations[frame]:
                 bbox = [i.min_x, i.min_y, i.max_x, i.max_y]
@@ -25,7 +22,6 @@ class AnnotationFile:
                     image_annotations[frame].append(annotation)
                 else:
                     image_annotations[frame] = [annotation]
-        print(image_annotations)
         try:
             filename = self.filename + ".xml"
             video_folder_path = os.path.dirname(self.filepath)
@@ -51,7 +47,6 @@ class AnnotationFile:
             # self.label_file.save_pascal_voc_format(filename=self.filename, annotations=image_annotations,
             #                                        video_path=self.filepath, image_shape=self.img.shape)
         except:
-            print("Error!")
             return False
 
     def load_pascal_xml_by_filename(self, xml_path):

@@ -49,6 +49,7 @@ class VideoAnnotator(MDGridLayout):
     play_speed = 1
     annotator_fps = 5  # video fps must be divisible by this
     prediction_frames = 25
+    annotation_per_frame_limit = 3
     counter = 10
     img = None
     clock = None
@@ -308,15 +309,12 @@ class VideoAnnotator(MDGridLayout):
             if width_scale < height_scale:
                 scale = width_scale
                 center_pos = 0, int((ch - scale * vh) / 2)
-                print('height scale', scale * vh, ch)
             else:
                 scale = height_scale
                 center_pos = int((cw - scale * vw) / 2), 0
-                print('width scale', scale * vw, cw)
 
             self.scatter_canvas._set_scale(scale)
             self.scatter_canvas.pos = center_pos
-            print('scatter pos ', center_pos)
 
     def load_video(self, video_path):
         # tracemalloc.start()
@@ -336,11 +334,9 @@ class VideoAnnotator(MDGridLayout):
             self.xml_path = os.path.join(self.vid_path, filename + '.xml')
             if os.path.isfile(self.xml_path):
                 # self.annotation_canvas.all_annotations = self.annotation_file.load_pascal_xml_by_filename(xml_path)
-                print(self.annotation_file.load_pascal_xml_by_filename(self.xml_path))
                 self.annotation_canvas.create_annotation_from_file(self.annotation_file.load_pascal_xml_by_filename(self.xml_path))
             if has_frames:
                 buffer = cv2.flip(img, 0).tostring()
-                print(img.shape)
                 texture = Texture.create(size=(img.shape[1], img.shape[0]), colorfmt='bgr')
                 texture.blit_buffer(buffer, colorfmt='bgr', bufferfmt='ubyte')
                 self.annotation_canvas.texture = texture
@@ -349,8 +345,6 @@ class VideoAnnotator(MDGridLayout):
                 self.annotation_canvas.width = dp(img.shape[1])
                 self.annotation_canvas.height = dp(img.shape[0])
                 self.check_and_draw_annotation()
-                print(self.annotation_canvas.all_annotations)
-
                 self.on_window_resize(None, None, None)
 
                 # To fix the scatter_canvas to follow the video screen size so that mouse interaction will work
@@ -430,9 +424,7 @@ class VideoAnnotator(MDGridLayout):
 
     def on_touch_move_timer_slider(self, widget, touch):
         if self.vid_cap is not None and widget.collide_point(*touch.pos):
-            print('touched1')
             self.annotation_canvas.remove_all_annotations()
-            print(self.time_slider.value)
             annotation_frame = self.convert_video_frame_from_annotator_frame(self.time_slider.value)
             self.vid_cap.set(cv2.CAP_PROP_POS_FRAMES, annotation_frame)
             self.set_vid_current_frame(annotation_frame)
@@ -489,8 +481,6 @@ class VideoAnnotator(MDGridLayout):
                 self.annotation_list.remove_widget(event.annotation.list_item)
 
         elif isinstance(event, AnnotationSelectedEvent):
-            print('divider color')
-            print(event.annotation)
             if hasattr(event.annotation, 'list_item'):
                 print(event.annotation.list_item.bg_color)
                 for list_item in self.annotation_list.children:
@@ -502,8 +492,6 @@ class VideoAnnotator(MDGridLayout):
         self.annotation_canvas.select_annotation(annotation)
 
     def on_complete_prediction(self, context, result, n_id):
-        print(context)
-        print(result)
         for key, value in result.items():
             key_frame = self.annotation_canvas.all_annotations.setdefault(int(key), [])
             annotation_graphic = AnnotationGraphic(
@@ -514,9 +502,10 @@ class VideoAnnotator(MDGridLayout):
                 verified=False,
                 n_id=n_id,
                 bounding_box=(value.min_x, value.min_y, value.max_x, value.max_y),
-                color=(0, 1, 0, 1)
+                color=(1, 0, 0)
             )
-            key_frame.append(annotation_graphic)
+            if len(key_frame) < self.annotation_per_frame_limit:
+                key_frame.append(annotation_graphic)
         toast('Object Tracking is completed')
 
     def on_press_next_button(self):
@@ -596,10 +585,10 @@ class VideoAnnotator(MDGridLayout):
                         toast("Video paused, adjust or click on annotation for it to continue annotating")
                     annotation.counter -= 1
                     key_frame = self.annotation_canvas.all_annotations.setdefault(int(current_frame), [])
-                    key_frame.append(self.annotation_canvas.create_annotation(annotation, current_frame))
-
-                    previous_annotation_index = self.annotation_canvas.all_annotations[previous_frame].index(annotation)
-                    self.annotation_canvas.all_annotations[previous_frame][previous_annotation_index].counter = -1
+                    if len(key_frame) < self.annotation_per_frame_limit:
+                        key_frame.append(self.annotation_canvas.create_annotation(annotation, current_frame))
+                        previous_annotation_index = self.annotation_canvas.all_annotations[previous_frame].index(annotation)
+                        self.annotation_canvas.all_annotations[previous_frame][previous_annotation_index].counter = -1
                 elif annotation.counter != -1:
                     previous_annotation_index = self.annotation_canvas.all_annotations[previous_frame].index(annotation)
                     self.annotation_canvas.all_annotations[previous_frame][previous_annotation_index].counter = -1
@@ -631,7 +620,7 @@ class VideoAnnotator(MDGridLayout):
             Window.set_system_cursor('arrow')
             self.annotation_canvas.mode = None
             return
-        if len(self.annotation_canvas.annotations) < 2:
+        if len(self.annotation_canvas.annotations) < self.annotation_per_frame_limit:
             Window.set_system_cursor('crosshair')
             rounded_to_annotation_frame = self.annotator_fps * round(self.vid_current_frame / self.annotator_fps)
             self.annotation_canvas.set_mode_create_annotation(self.label, rounded_to_annotation_frame)
