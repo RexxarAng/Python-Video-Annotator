@@ -540,6 +540,7 @@ class VideoAnnotator(MDGridLayout):
         print(modifier)
         if self.vid_path:
             if key == 32:
+                # space-bar
                 self.toggle_play()
                 return
             if self.clock is None:

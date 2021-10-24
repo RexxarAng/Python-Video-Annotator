@@ -66,9 +66,10 @@ if len(sys.argv) == 3:
                 i = next(d1_iter, None)
                 j = next(d2_iter, None)
 
-        print(filename1, "has a total of", len(dict1), "annotations")
-        print(filename2, "has a total of", len(dict2), "annotations")
-        print("Interannotator agreement score:", score / counter)
+        # print(filename1, "has a total of", len(dict1), "annotations")
+        # print(filename2, "has a total of", len(dict2), "annotations")
+        # print("Interannotator agreement score:", score / counter)
+        print(score/counter)
     else:
         print("Invalid file")
         exit()
