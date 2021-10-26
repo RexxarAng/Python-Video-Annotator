@@ -56,7 +56,7 @@ class AnnotationCanvas(Image):
                             # Unselect current selected annotation
                             self.selected_annotation.display_resize_hint(False)
                             if self.selected_annotation.verified:
-                                 self.selected_annotation.change_color((0, 255, 215, 0.7))
+                                self.selected_annotation.change_color((0, 255, 215, 0.7))
                             else:
                                 self.selected_annotation.change_color((1, 0, 0))
                         self.mode = self.MODE_DRAG_ANNOTATION
@@ -115,7 +115,7 @@ class AnnotationCanvas(Image):
         if self.selected_annotation:
             self.selected_annotation.reset_min_max()
             self.selected_annotation.redraw()
-        if self.mode == self.MODE_CREATE_ANNOTATION:
+        if self.mode == self.MODE_CREATE_ANNOTATION and self.selected_annotation:
             self.post_event(AnnotationCreatedEvent(annotation=self.selected_annotation, is_interactive=True))
             self.mode = None
         elif self.mode == self.MODE_DRAG_ANNOTATION or self.mode == self.MODE_RESIZE_ANNOTATION:
