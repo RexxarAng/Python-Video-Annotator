@@ -22,6 +22,7 @@ from annotator.annotation_canvas import (AnnotationCanvas)
 from annotator.annotation_event import *
 from label.annotation_file import AnnotationFile
 from object_tracking.annotation_prediction import AnnotationPrediction
+from functools import partial
 
 
 class IconButtonTooltips(MDIconButton, MDTooltip):
@@ -502,7 +503,7 @@ class VideoAnnotator(MDGridLayout):
                 verified=False,
                 n_id=n_id,
                 bounding_box=(value.min_x, value.min_y, value.max_x, value.max_y),
-                color=(1, 0, 0)
+                color=(0, 1, 0, 1)
             )
             if len(key_frame) < self.annotation_per_frame_limit:
                 key_frame.append(annotation_graphic)
@@ -623,7 +624,7 @@ class VideoAnnotator(MDGridLayout):
         if len(self.annotation_canvas.annotations) < self.annotation_per_frame_limit:
             Window.set_system_cursor('crosshair')
             rounded_to_annotation_frame = self.annotator_fps * round(self.vid_current_frame / self.annotator_fps)
-            self.annotation_canvas.set_mode_create_annotation(self.label, rounded_to_annotation_frame)
+            Clock.schedule_once(partial(self.annotation_canvas.set_mode_create_annotation, label_name=self.label, frame=rounded_to_annotation_frame), 0.1)
         else:
             toast("Only maximum of two annotations can be made")
 

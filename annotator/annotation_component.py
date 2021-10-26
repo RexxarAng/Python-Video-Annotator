@@ -98,7 +98,7 @@ class AnnotationGraphic(BoundingBox, CanvasGraphic, IDraggable, IResizable):
 
         self.name = kwargs.get('name', '<no-value>')
         self.frame = kwargs.get('frame', '<no-value>')
-        self.color = kwargs.get('color', (1, 0, 0))
+        self.color = kwargs.get('color', (0, 1, 0, 1))
         self.counter = kwargs.get('counter', '<no-value>')
         self.verified = kwargs.get('verified', '<no-value>')
         if 'n_id' in kwargs:
@@ -133,7 +133,7 @@ class AnnotationGraphic(BoundingBox, CanvasGraphic, IDraggable, IResizable):
                 if self.verified:
                     Color(*self.color)
                 else:
-                    Color(1, 0, 0)
+                    Color(0, 1, 0, 1)
                 if self._resize_boxes is None:
                     self._resize_boxes = []
                     for _ in range(0, 4, 1):
