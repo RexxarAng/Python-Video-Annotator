@@ -12,9 +12,11 @@
 ## Introduction
 With the increase of illegal smoking happening around Singapore, our team has come up with a video clip annotator to support and find a way for users to capture it with annotations for future references. The closed-circuit television (CCTV) is used to monitor the public areas and the recording can be analyzed for instances of illegal smoking and annotated accordingly.
 
+Click the image below to watch our video demonstration for this project.
+
 <a href="https://www.youtube.com/watch?v=FloDsSYSAqo"
 target="_blank"><img src="http://img.youtube.com/vi/FloDsSYSAqo/0.jpg" 
-alt="Python Video Annotator" width="240" height="180" border="10" /></a>
+alt="Python Video Annotator" width="480" border="10" /></a>
 
 
 ## Technologies
