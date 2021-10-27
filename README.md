@@ -14,9 +14,7 @@ With the increase of illegal smoking happening around Singapore, our team has co
 
 Click the image below to watch our video demonstration for this project.
 
-<a href="https://www.youtube.com/watch?v=FloDsSYSAqo"
-target="_blank"><img src="http://img.youtube.com/vi/FloDsSYSAqo/hqdefault.jpg" 
-alt="Python Video Annotator" width="480" height="auto" border="10" /></a>
+[![Python Video Annotator Video](http://img.youtube.com/vi/FloDsSYSAqo/0.jpg)](http://www.youtube.com/watch?v=YFloDsSYSAqo)
 
 
 ## Technologies
