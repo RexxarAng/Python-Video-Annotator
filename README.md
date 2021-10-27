@@ -5,10 +5,17 @@
 * [Technologies](#technologies)
 * [Setup](#setup)
 * [Features](#features)
+* [Interannotator Agreement](#interannotator-agreement)
 * [Shortcut-keys](#shortcut-keys)
+
 
 ## Introduction
 With the increase of illegal smoking happening around Singapore, our team has come up with a video clip annotator to support and find a way for users to capture it with annotations for future references. The closed-circuit television (CCTV) is used to monitor the public areas and the recording can be analyzed for instances of illegal smoking and annotated accordingly.
+
+<a href="https://www.youtube.com/watch?v=FloDsSYSAqo"
+target="_blank"><img src="http://img.youtube.com/vi/FloDsSYSAqo/0.jpg" 
+alt="Python Video Annotator" width="240" height="180" border="10" /></a>
+
 
 ## Technologies
 Project is created with:
@@ -66,6 +73,19 @@ Verify annotations
 
 Unverify annotations
 - Save all annotations and unverify all annotations made into the xml file
+
+
+## Interannotator Agreement
+- Add or remove the xml files created by the application to folders 'person1' and 'person2' to compute their interannotator agreement
+- Run the following commands
+
+```
+$ ./compute.ps1
+```
+
+Sample output
+
+![image](https://user-images.githubusercontent.com/24503925/139047179-cdb066a1-29ae-4c43-9bd5-dedeb156b5bb.png)
 
 
 ## Shortcut keys
