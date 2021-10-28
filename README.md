@@ -31,6 +31,8 @@ To run this project, install it locally using pip:
 
 ```
 $ cd ../Python-Video-Annotator
+$ python -m venv venv
+$ ./venv/scripts/activate.bat
 $ pip install -r requirements.txt
 $ python main.py
 ```
